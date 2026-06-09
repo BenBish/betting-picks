@@ -1,0 +1,5 @@
+.agents/
+.codex/
+.playwright-mcp/
+
+.DS_Store
