@@ -3,3 +3,19 @@
 .playwright-mcp/
 
 .DS_Store
+
+# Node modules
+node_modules/
+
+# Build output
+frontend/dist/
+
+# Database files
+backend/data/
+
+# Environment files
+.env.local
+backend/.env
+
+# Vite cache
+frontend/node_modules/.vite/
