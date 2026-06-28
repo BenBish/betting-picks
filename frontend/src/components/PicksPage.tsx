@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link } from '@tanstack/react-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getPicks, createPick, deletePick, Pick } from '../lib/api';
+import { getPicks, createPick, deletePick, setResult, setClosingLine, Pick } from '../lib/api';
 
 export function PicksPage() {
   const queryClient = useQueryClient();
@@ -23,6 +23,17 @@ export function PicksPage() {
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => deletePick(id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['picks'] }),
+  });
+
+  const settleMutation = useMutation({
+    mutationFn: ({ id, result }: { id: string; result: string }) => setResult(id, result),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['picks'] }),
+  });
+
+  const closingLineMutation = useMutation({
+    mutationFn: ({ id, closing_odds }: { id: string; closing_odds: number }) =>
+      setClosingLine(id, closing_odds),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['picks'] }),
   });
 
@@ -88,6 +99,8 @@ export function PicksPage() {
                   key={pick.id}
                   pick={pick}
                   onDelete={() => deleteMutation.mutate(pick.id)}
+                  onSettle={(result) => settleMutation.mutate({ id: pick.id, result })}
+                  onSetClosingLine={(closing_odds) => closingLineMutation.mutate({ id: pick.id, closing_odds })}
                 />
               ))}
             </tbody>
@@ -237,10 +250,20 @@ function PickForm({ onSubmit }: { onSubmit: (data: any) => void }) {
   );
 }
 
-function PickRow({ pick, onDelete }: { pick: Pick; onDelete: () => void }) {
-  const [editing, setEditing] = useState(false);
+function PickRow({
+  pick,
+  onDelete,
+  onSettle,
+  onSetClosingLine,
+}: {
+  pick: Pick;
+  onDelete: () => void;
+  onSettle: (result: string) => void;
+  onSetClosingLine: (closing_odds: number) => void;
+}) {
   const [result, setResult] = useState('');
-  const [closingOdds, setClosingOdds] = useState('');
+  const [editingClosing, setEditingClosing] = useState(false);
+  const [closingValue, setClosingValue] = useState(pick.closing_odds?.toString() ?? '');
 
   const resultColor =
     pick.result === 'won'
@@ -267,6 +290,26 @@ function PickRow({ pick, onDelete }: { pick: Pick; onDelete: () => void }) {
         ? 'text-destructive'
         : 'text-muted-foreground';
 
+  const handleSettle = (value: string) => {
+    setResult(value);
+    if (value) {
+      onSettle(value);
+    }
+  };
+
+  const handleClosingLineSubmit = () => {
+    const val = parseFloat(closingValue);
+    if (!isNaN(val) && val > 1) {
+      onSetClosingLine(val);
+    }
+    setEditingClosing(false);
+  };
+
+  const handleClosingLineCancel = () => {
+    setClosingValue(pick.closing_odds?.toString() ?? '');
+    setEditingClosing(false);
+  };
+
   return (
     <tr className="border-b border-border/50 hover:bg-muted/30">
       <td className="px-3 py-2 text-muted-foreground">{new Date(pick.match_date).toLocaleDateString()}</td>
@@ -292,17 +335,7 @@ function PickRow({ pick, onDelete }: { pick: Pick; onDelete: () => void }) {
           <select
             className="rounded border border-input bg-background px-1 py-0.5 text-xs"
             value={result}
-            onChange={(e) => {
-              setResult(e.target.value);
-              if (e.target.value) {
-                fetch(`/api/admin/picks/${pick.id}/result`, {
-                  method: 'PUT',
-                  headers: { 'Content-Type': 'application/json' },
-                  credentials: 'include',
-                  body: JSON.stringify({ result: e.target.value }),
-                });
-              }
-            }}
+            onChange={(e) => handleSettle(e.target.value)}
           >
             <option value="">Settle</option>
             <option value="won">Won</option>
@@ -317,12 +350,41 @@ function PickRow({ pick, onDelete }: { pick: Pick; onDelete: () => void }) {
       </td>
       <td className="px-3 py-2 text-center text-xs text-muted-foreground">{pick.source || '-'}</td>
       <td className="px-3 py-2 text-center">
-        <button
-          onClick={onDelete}
-          className="text-xs text-destructive hover:underline"
-        >
-          Delete
-        </button>
+        <div className="flex items-center justify-center gap-2">
+          {editingClosing ? (
+            <div className="flex items-center gap-1">
+              <input
+                type="number"
+                step="0.01"
+                min="1.01"
+                className="w-16 rounded border border-input bg-background px-1 py-0.5 text-xs font-mono"
+                value={closingValue}
+                onChange={(e) => setClosingValue(e.target.value)}
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleClosingLineSubmit();
+                  if (e.key === 'Escape') handleClosingLineCancel();
+                }}
+              />
+              <button onClick={handleClosingLineSubmit} className="text-xs text-success hover:underline">✓</button>
+              <button onClick={handleClosingLineCancel} className="text-xs text-muted-foreground hover:underline">✕</button>
+            </div>
+          ) : (
+            <span
+              className="cursor-pointer font-mono text-xs hover:underline"
+              onClick={() => setEditingClosing(true)}
+              title="Click to edit closing line"
+            >
+              {pick.closing_odds !== null ? pick.closing_odds.toFixed(2) : '-'}
+            </span>
+          )}
+          <button
+            onClick={onDelete}
+            className="text-xs text-destructive hover:underline"
+          >
+            Delete
+          </button>
+        </div>
       </td>
     </tr>
   );

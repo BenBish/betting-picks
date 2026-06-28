@@ -98,7 +98,7 @@ export function createPick(data: {
     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
 
-  insert.run(
+  const insertResult = insert.run(
     data.source ?? null,
     data.match_date,
     data.competition ?? null,
@@ -117,12 +117,16 @@ export function createPick(data: {
     data.agent_id ?? null
   );
 
-  // Fetch the newly inserted pick - use the latest created_at as fallback
-  const rows = db
-    .prepare('SELECT * FROM picks ORDER BY created_at DESC, id DESC LIMIT 1')
-    .all() as Record<string, unknown>[];
+  // Fetch by rowid for reliable retrieval (no race condition with concurrent inserts)
+  const row = db
+    .prepare('SELECT * FROM picks WHERE rowid = ?')
+    .get(insertResult.lastInsertRowid) as Record<string, unknown>;
 
-  return rowToPick(rows[0]);
+  if (!row) {
+    throw new Error('Failed to retrieve inserted pick');
+  }
+
+  return rowToPick(row);
 }
 
 export function getPickById(id: string): PickWithClv | null {
