@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "bun run --watch src/server.ts",
     "build": "tsc --noEmit",
-    "start": "bun run src/server.ts"
+    "start": "bun run src/server.ts",
+    "test": "bun test src/lib/*.test.ts"
   },
   "dependencies": {
     "csv-stringify": "^6.5.0",

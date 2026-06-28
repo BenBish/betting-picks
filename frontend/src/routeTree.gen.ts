@@ -17,6 +17,7 @@ const LoginLazyRouteImport = createFileRoute('/login')()
 const AuthIndexLazyRouteImport = createFileRoute('/_auth/')()
 const AuthAnalyticsLazyRouteImport = createFileRoute('/_auth/analytics')()
 const AuthAgentsLazyRouteImport = createFileRoute('/_auth/agents')()
+const AuthActivityLazyRouteImport = createFileRoute('/_auth/activity')()
 
 const LoginLazyRoute = LoginLazyRouteImport.update({
   id: '/login',
@@ -44,15 +45,24 @@ const AuthAgentsLazyRoute = AuthAgentsLazyRouteImport.update({
   path: '/agents',
   getParentRoute: () => AuthRoute,
 } as any).lazy(() => import('./routes/_auth.agents.lazy').then((d) => d.Route))
+const AuthActivityLazyRoute = AuthActivityLazyRouteImport.update({
+  id: '/activity',
+  path: '/activity',
+  getParentRoute: () => AuthRoute,
+} as any).lazy(() =>
+  import('./routes/_auth.activity.lazy').then((d) => d.Route),
+)
 
 export interface FileRoutesByFullPath {
   '/': typeof AuthIndexLazyRoute
   '/login': typeof LoginLazyRoute
+  '/activity': typeof AuthActivityLazyRoute
   '/agents': typeof AuthAgentsLazyRoute
   '/analytics': typeof AuthAnalyticsLazyRoute
 }
 export interface FileRoutesByTo {
   '/login': typeof LoginLazyRoute
+  '/activity': typeof AuthActivityLazyRoute
   '/agents': typeof AuthAgentsLazyRoute
   '/analytics': typeof AuthAnalyticsLazyRoute
   '/': typeof AuthIndexLazyRoute
@@ -61,19 +71,21 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_auth': typeof AuthRouteWithChildren
   '/login': typeof LoginLazyRoute
+  '/_auth/activity': typeof AuthActivityLazyRoute
   '/_auth/agents': typeof AuthAgentsLazyRoute
   '/_auth/analytics': typeof AuthAnalyticsLazyRoute
   '/_auth/': typeof AuthIndexLazyRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/login' | '/agents' | '/analytics'
+  fullPaths: '/' | '/login' | '/activity' | '/agents' | '/analytics'
   fileRoutesByTo: FileRoutesByTo
-  to: '/login' | '/agents' | '/analytics' | '/'
+  to: '/login' | '/activity' | '/agents' | '/analytics' | '/'
   id:
     | '__root__'
     | '/_auth'
     | '/login'
+    | '/_auth/activity'
     | '/_auth/agents'
     | '/_auth/analytics'
     | '/_auth/'
@@ -121,16 +133,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthAgentsLazyRouteImport
       parentRoute: typeof AuthRoute
     }
+    '/_auth/activity': {
+      id: '/_auth/activity'
+      path: '/activity'
+      fullPath: '/activity'
+      preLoaderRoute: typeof AuthActivityLazyRouteImport
+      parentRoute: typeof AuthRoute
+    }
   }
 }
 
 interface AuthRouteChildren {
+  AuthActivityLazyRoute: typeof AuthActivityLazyRoute
   AuthAgentsLazyRoute: typeof AuthAgentsLazyRoute
   AuthAnalyticsLazyRoute: typeof AuthAnalyticsLazyRoute
   AuthIndexLazyRoute: typeof AuthIndexLazyRoute
 }
 
 const AuthRouteChildren: AuthRouteChildren = {
+  AuthActivityLazyRoute: AuthActivityLazyRoute,
   AuthAgentsLazyRoute: AuthAgentsLazyRoute,
   AuthAnalyticsLazyRoute: AuthAnalyticsLazyRoute,
   AuthIndexLazyRoute: AuthIndexLazyRoute,

@@ -33,6 +33,15 @@ export interface Agent {
   last_active_at: string | null;
 }
 
+export interface ActivityLog {
+  id: string;
+  created_at: string;
+  agent_id: string | null;
+  pick_id: string | null;
+  action: string;
+  details: string | null;
+}
+
 export interface AnalyticsResult {
   total_picks: number;
   settled_picks: number;
@@ -226,6 +235,25 @@ export async function getDailyPnL(): Promise<any[]> {
   const res = await fetch(`${API_BASE}/admin/analytics/daily-pnl`, { credentials: 'include' });
   const data = await res.json();
   return data.data;
+}
+
+// --- Activity ---
+
+export async function getActivity(filters?: {
+  limit?: number;
+  offset?: number;
+  agent_id?: string;
+  action?: string;
+}): Promise<ActivityLog[]> {
+  const params = new URLSearchParams();
+  if (filters?.limit) params.set('limit', filters.limit.toString());
+  if (filters?.offset) params.set('offset', filters.offset.toString());
+  if (filters?.agent_id) params.set('agent_id', filters.agent_id);
+  if (filters?.action) params.set('action', filters.action);
+
+  const res = await fetch(`${API_BASE}/activity?${params}`, { credentials: 'include' });
+  const data = await res.json();
+  return data.activities;
 }
 
 // --- Export ---

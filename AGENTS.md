@@ -2,68 +2,153 @@
 
 ## Structure
 
-- `docs/soccer-picks-tracker-mvp-prd.md` — PRD with schema, API spec, and calculations.
-- `poc/no-supabase-local/` — **Only app**. Next.js 14 monolith. All work happens here.
-- Root `docs/` is the only spec. Code of truth is in `poc/no-supabase-local/src/`.
+- `backend/` — Hono/Bun API server with SQLite
+- `frontend/` — Vite/React/TanStack Router SPA
+- Root `package.json` — Bun workspaces with convenience scripts
+
+### Backend (`backend/`)
+
+```
+backend/src/
+  server.ts                 # Bun server entry point
+  index.ts                  # Hono app with all routes
+  lib/
+    db.ts                   # SQLite singleton, migration runner
+    picks-service.ts        # Pick CRUD, filtering, batch ops, activity logging
+    agent-service.ts        # Agent CRUD, key management, activity logging
+    analytics-service.ts    # Analytics aggregation queries
+    activity-service.ts     # Activity log writes + SSE broadcast
+    sse-emitter.ts          # In-memory SSE broadcaster
+    calculations.ts         # Pure CLV% and P&L functions
+    validations.ts          # Zod schemas (picks, agents, auth, batch)
+  middleware/
+    auth.ts                 # Password hash, session token, session map
+    rate-limit.ts           # Agent Bearer auth + sliding window rate limiter
+  migrations/
+    001_initial_picks.sql   # Picks table
+    002_agents_activity.sql # Agents, activity_log tables
+```
+
+### Frontend (`frontend/`)
+
+```
+frontend/src/
+  main.tsx                  # Entry point
+  router.ts                 # TanStack Router setup
+  index.css                 # Tailwind base styles
+  lib/
+    api.ts                  # API client with typed fetch wrappers
+  components/
+    LoginPage.tsx           # Auth login form
+    PicksPage.tsx           # Picks table, create form, settle, closing line, activity sidebar
+    AnalyticsPage.tsx       # Summary cards, charts (Recharts), by-agent/market/competition
+    AgentsPage.tsx          # Agent CRUD, key rotation
+    ActivityFeed.tsx        # Collapsible activity feed component
+  routes/
+    __root.tsx              # Root route with QueryClientProvider
+    _auth.tsx               # Authenticated layout, SSE subscription, nav guard
+    _auth.index.lazy.tsx    # / → PicksPage
+    _auth.analytics.lazy.tsx # /analytics → AnalyticsPage
+    _auth.agents.lazy.tsx   # /agents → AgentsPage
+    _auth.activity.lazy.tsx # /activity → Full activity log page
+    login.lazy.tsx          # /login → LoginPage (redirects if authenticated)
+```
 
 ## Commands
 
-All commands run from `poc/no-supabase-local/`:
+All commands run from root `/home/ben/Dev/betting-picks-mvp/`:
 
 ```
-bun dev          # dev server, port 3000 (falls back to 3001)
-bun run build    # production build
-bun start        # serve production build
+bun run dev              # Both backend (3000) + frontend (5173) via concurrently
+bun run dev:backend      # Backend only
+bun run dev:frontend     # Frontend only
+bun run build            # Typecheck backend + build frontend
+bun run start:backend    # Production backend
+bun run start:frontend   # Production frontend preview
+bun run clean            # Remove SQLite database files
 ```
 
-No test runner, no linter config beyond `bun lint` (Next.js default). Use `bun run build` to verify type safety — TypeScript is strict with `noEmit`.
+Backend tests: `cd backend && bun test`
+Frontend build: `cd frontend && bun run build`
+
+No test runner, no linter config beyond defaults. Use `bun run build` to verify type safety — TypeScript is strict with `noEmit`.
 
 ## Database
 
-- **Engine**: Node built-in `node:sqlite` (NOT better-sqlite3, NOT Supabase).
-- **File**: `data/picks.db` (created at runtime from `DB_PATH` env var).
-- **Schema**: `src/lib/schema.sql` — single `picks` table. Run via `src/lib/db.ts` on first connection.
-- **WAL mode** enabled. No migrations framework — schema is idempotent (`CREATE TABLE IF NOT EXISTS`).
+- **Engine**: Bun built-in `bun:sqlite`.
+- **File**: `backend/data/picks.db` (created at runtime from `DB_PATH` env var).
+- **Schema**: Migration files in `backend/src/migrations/`. Run via `db.ts` on first connection.
+- **WAL mode** enabled. Migrations tracked via `schema_migrations` table.
+
+### Tables
+
+- `picks` — All betting picks with `agent_id`, `created_by`, `updated_by`
+- `agents` — Named agents with scrypt-hashed keys, soft-delete via `is_active`
+- `activity_log` — Audit trail for all write operations
+- `schema_migrations` — Migration tracking
 
 ## Architecture
 
-```
-src/
-  app/
-    page.tsx              # Server component, fetches picks, renders table
-    api/picks/            # Agent API routes (Bearer auth)
-    api/export/           # CSV export endpoint
-  lib/
-    db.ts                 # SQLite singleton, auto-runs schema.sql
-    picks-service.ts      # All CRUD + CLV/P&L calculations (server-side only)
-    server-actions.ts     # 'use server' mutations for UI, calls picks-service
-    validations.ts        # Shared Zod schemas
-    calculations.ts       # Pure calculation functions
-    middleware/agent-auth.ts  # Bearer token check against AGENT_API_KEY
-  components/             # Client components (TanStack Table, forms, dialogs)
-```
-
 **Two entry points**:
-1. **UI** → server actions → `picks-service.ts` → SQLite
-2. **Agent API** → route handlers → `picks-service.ts` → SQLite
+1. **UI** → TanStack Query mutations → Hono admin routes → picks-service → SQLite
+2. **Agent API** → Bearer auth → Hono agent routes → picks-service → SQLite
 
 All CLV% and P&L are calculated server-side in `picks-service.ts` on write. Never trust client values.
 
+Activity logging is wired into every write operation (create, update, settle, delete, batch ops) and broadcasts via SSE to connected clients.
+
 ## Environment
 
-`.env.local` (gitignored):
+`backend/.env` (gitignored):
 ```
-AGENT_API_KEY=poc-agent-key-change-me
+APP_PASSWORD=your-password-here
+SESSION_SECRET=your-session-secret
 DB_PATH=./data/picks.db
+PORT=3000
 ```
 
-Agent API requires `Authorization: Bearer <AGENT_API_KEY>` header.
+- Admin auth: password-based session with HttpOnly cookies
+- Agent auth: Bearer token with individual keys (`spk_xxxx...`), rate limited to 100 req/min
+
+## API Endpoints
+
+### Auth
+- `POST /api/login` — `{ "password": "..." }` → sets HttpOnly session cookie
+- `POST /api/logout` — clears session cookie
+
+### Admin Routes (session-auth)
+- `GET/POST /api/admin/agents` — list/create agents
+- `GET/PUT/DELETE /api/admin/agents/:id` — agent CRUD
+- `POST /api/admin/agents/:id/rotate-key` — rotate agent key
+- `GET/POST /api/admin/picks` — list/create picks
+- `GET/PUT/DELETE /api/admin/picks/:id` — pick CRUD
+- `PUT /api/admin/picks/:id/closing-line` — set closing odds
+- `PUT /api/admin/picks/:id/result` — settle pick
+- `GET /api/admin/analytics` — overall stats
+- `GET /api/admin/analytics/by-agent` — per-agent breakdown
+- `GET /api/admin/analytics/by-market` — per-market breakdown
+- `GET /api/admin/analytics/by-competition` — per-competition breakdown
+- `GET /api/admin/analytics/daily-pnl` — daily P&L data points
+- `GET /api/admin/export/csv` — CSV export
+- `GET /api/activity` — paginated activity log (`?limit=50&offset=0&agent_id=...&action=...`)
+- `GET /api/activity/stream` — SSE real-time activity feed
+
+### Agent Routes (Bearer auth, rate limited)
+- `POST /api/agent/picks` — create single pick
+- `POST /api/agent/picks/batch` — batch create (207 Multi-Status)
+- `POST /api/agent/picks/batch-closing-lines` — batch closing lines (207)
+- `POST /api/agent/picks/batch-results` — batch settle results (207)
+
+### Public
+- `GET /api/health` — health check
 
 ## Gotchas
 
-- **Config file**: `next.config.mjs` (`.mjs`, NOT `.js`) — ESM required for Bun compatibility.
+- **Config file**: `next.config.mjs` no longer exists. Frontend uses `vite.config.ts`.
 - **Path alias**: `@/*` → `./src/*` (tsconfig paths).
-- **`<input type="datetime-local">`** produces `2026-06-14T15:00` (no timezone offset). Zod `.datetime({ offset: true })` rejects this. Use `z.string().refine((v) => !isNaN(new Date(v).getTime()))` instead.
-- **Dev server**: Bun's `bun dev` uses Next.js's internal Node compat layer. If port 3000 is taken it silently tries 3001.
-- **`/api/export`** logs a dynamic usage warning during `bun run build` (reads `getAllPicks` at build time). It works at runtime — ignore the warning.
-- **Playwright Chrome**: System Chromium is at `/usr/bin/chromium`. Symlink to `/opt/google/chrome/chrome` if Playwright can't find it.
+- **`<input type="datetime-local">`** produces `2026-06-14T15:00` (no timezone offset). Use `z.string().refine((v) => !isNaN(new Date(v).getTime()))`.
+- **Dev server**: Frontend on 5173, backend on 3000. Vite proxies `/api` → `http://localhost:3000`.
+- **SSE**: The `GET /api/activity/stream` endpoint uses `text/event-stream`. Browser `EventSource` auto-reconnects.
+- **Soft delete**: Agents are deactivated (`is_active = 0`) rather than hard-deleted. Use `getAllAgents(true)` to include inactive.
+- **Batch response**: 207 Multi-Status with per-item status codes.
+- **Tests**: Use `bun test` in backend. Each test file creates a fresh temp SQLite DB.

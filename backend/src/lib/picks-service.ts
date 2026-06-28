@@ -1,5 +1,6 @@
 import { getDb } from './db';
 import { calculateClvPercent, calculateProfitLoss } from './calculations';
+import { logActivity } from './activity-service';
 
 export interface PickRow {
   id: string;
@@ -126,7 +127,16 @@ export function createPick(data: {
     throw new Error('Failed to retrieve inserted pick');
   }
 
-  return rowToPick(row);
+  const pick = rowToPick(row);
+
+  logActivity(
+    data.agent_id ?? null,
+    pick.id,
+    'pick.created',
+    `${pick.home_team} vs ${pick.away_team} — ${pick.selection} @ ${pick.recommended_odds}`
+  );
+
+  return pick;
 }
 
 export function getPickById(id: string): PickWithClv | null {
@@ -154,11 +164,11 @@ export function getAllPicks(filters: {
   const params: (string | number)[] = [];
 
   if (filters.source) {
-    sql += ' AND source = ?';
+    sql += ' AND LOWER(source) = LOWER(?)';
     params.push(filters.source);
   }
   if (filters.competition) {
-    sql += ' AND competition = ?';
+    sql += ' AND LOWER(competition) = LOWER(?)';
     params.push(filters.competition);
   }
   if (filters.result) {
@@ -256,7 +266,17 @@ export function updatePick(
 
   db.prepare(sql).run(...values);
 
-  return getPickById(id);
+  const updated = getPickById(id);
+  if (updated) {
+    logActivity(
+      updated.agent_id,
+      updated.id,
+      'pick.updated',
+      `${updated.home_team} vs ${updated.away_team} — updated by ${updatedBy}`
+    );
+  }
+
+  return updated;
 }
 
 export function updateClosingLine(
@@ -279,7 +299,17 @@ export function updateClosingLine(
       updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE id = ?
   `).run(closingOdds, profitLoss, updatedBy, id);
 
-  return getPickById(id);
+  const updated = getPickById(id);
+  if (updated) {
+    logActivity(
+      updated.agent_id,
+      updated.id,
+      'pick.closing_line',
+      `${updated.home_team} vs ${updated.away_team} — CL: ${closingOdds}`
+    );
+  }
+
+  return updated;
 }
 
 export function settleResult(
@@ -302,7 +332,17 @@ export function settleResult(
       updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE id = ?
   `).run(result, profitLoss, updatedBy, id);
 
-  return getPickById(id);
+  const updated = getPickById(id);
+  if (updated) {
+    logActivity(
+      updated.agent_id,
+      updated.id,
+      'pick.settled',
+      `${updated.home_team} vs ${updated.away_team} — ${result} (${profitLoss >= 0 ? '+' : ''}${profitLoss.toFixed(2)})`
+    );
+  }
+
+  return updated;
 }
 
 export function deletePick(id: string): boolean {
@@ -311,6 +351,14 @@ export function deletePick(id: string): boolean {
   if (!existing) return false;
 
   db.prepare('DELETE FROM picks WHERE id = ?').run(id);
+
+  logActivity(
+    existing.agent_id,
+    existing.id,
+    'pick.deleted',
+    `${existing.home_team} vs ${existing.away_team} — ${existing.selection}`
+  );
+
   return true;
 }
 
@@ -344,7 +392,7 @@ export function batchCreatePicks(picks: Array<{
           ? calculateProfitLoss(pickData.result, pickData.stake, pickData.recommended_odds)
           : null;
 
-        db.prepare(`
+        const insertResult = db.prepare(`
           INSERT INTO picks (
             source, match_date, competition, home_team, away_team,
             market, selection, recommended_odds, closing_odds, stake,
@@ -368,6 +416,20 @@ export function batchCreatePicks(picks: Array<{
           pickData.raw_agent_payload ?? null,
           pickData.agent_id ?? null
         );
+
+        // Log activity for each batch-created pick
+        const insertedRow = db
+          .prepare('SELECT * FROM picks WHERE rowid = ?')
+          .get(insertResult.lastInsertRowid) as Record<string, unknown> | undefined;
+        if (insertedRow) {
+          const pick = rowToPick(insertedRow);
+          logActivity(
+            pickData.agent_id ?? null,
+            pick.id,
+            'pick.created',
+            `${pick.home_team} vs ${pick.away_team} — ${pick.selection} @ ${pick.recommended_odds}`
+          );
+        }
 
         results.push({ success: true });
       } catch (err) {
@@ -410,6 +472,12 @@ export function batchUpdateClosingLines(
         UPDATE picks SET closing_odds = ?, profit_loss = ?, updated_by = ?,
           updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE id = ?
       `).run(update.closing_odds, profitLoss, updatedBy, update.id);
+      logActivity(
+        existing.agent_id,
+        existing.id,
+        'pick.closing_line',
+        `${existing.home_team} vs ${existing.away_team} — CL: ${update.closing_odds}`
+      );
       results.push({ success: true });
     } catch (err) {
       results.push({ success: false, error: String(err) });
@@ -440,6 +508,12 @@ export function batchSettleResults(
         UPDATE picks SET result = ?, profit_loss = ?, updated_by = ?,
           updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE id = ?
       `).run(update.result, profitLoss, updatedBy, update.id);
+      logActivity(
+        existing.agent_id,
+        existing.id,
+        'pick.settled',
+        `${existing.home_team} vs ${existing.away_team} — ${update.result} (${profitLoss >= 0 ? '+' : ''}${profitLoss.toFixed(2)})`
+      );
       results.push({ success: true });
     } catch (err) {
       results.push({ success: false, error: String(err) });

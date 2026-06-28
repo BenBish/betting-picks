@@ -19,3 +19,4 @@ backend/.env
 
 # Vite cache
 frontend/node_modules/.vite/
+archive-poc/

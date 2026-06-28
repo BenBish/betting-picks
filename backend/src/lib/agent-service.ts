@@ -1,5 +1,6 @@
 import { getDb } from './db';
 import * as crypto from 'crypto';
+import { logActivity } from './activity-service';
 
 export interface Agent {
   id: string;
@@ -35,6 +36,8 @@ export function createAgent(name: string): { agent: Agent; key: string } {
     VALUES (?, ?, ?, ?, 1)
   `).run(id, name, keyHash, keyPrefix);
 
+  logActivity(null, null, 'agent.created', `Agent "${name}" created (${keyPrefix}...)`);
+
   return {
     agent: getAgentByName(name)!,
     key,
@@ -67,11 +70,12 @@ export function getAgentByKey(key: string): Agent | null {
   return rowToAgent(row);
 }
 
-export function getAllAgents(): Agent[] {
+export function getAllAgents(includeInactive: boolean = false): Agent[] {
   const db = getDb();
-  const rows = db
-    .prepare('SELECT * FROM agents ORDER BY name')
-    .all() as Record<string, unknown>[];
+  const sql = includeInactive
+    ? 'SELECT * FROM agents ORDER BY name'
+    : 'SELECT * FROM agents WHERE is_active = 1 ORDER BY name';
+  const rows = db.prepare(sql).all() as Record<string, unknown>[];
   return rows.map(rowToAgent);
 }
 
@@ -113,13 +117,24 @@ export function rotateAgentKey(id: string): string | null {
   db.prepare('UPDATE agents SET key_hash = ?, key_prefix = ? WHERE id = ?')
     .run(newHash, newPrefix, id);
 
+  logActivity(id, null, 'agent.key_rotated', `Agent "${existing.name}" key rotated (${newPrefix}...)`);
+
   return newKey;
 }
 
 export function deleteAgent(id: string): boolean {
   const db = getDb();
-  const result = db.prepare('DELETE FROM agents WHERE id = ?').run(id);
-  return result.changes > 0;
+  const existing = db.prepare('SELECT * FROM agents WHERE id = ?').get(id) as Record<string, unknown> | undefined;
+  if (!existing) return false;
+
+  const name = existing.name as string;
+
+  // Soft delete: deactivate instead of hard delete
+  db.prepare('UPDATE agents SET is_active = 0 WHERE id = ?').run(id);
+
+  logActivity(null, null, 'agent.deleted', `Agent "${name}" deactivated`);
+
+  return true;
 }
 
 export function getAgentById(id: string): Agent | null {

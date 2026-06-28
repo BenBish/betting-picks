@@ -8,6 +8,8 @@ import { agentAuthMiddleware } from './middleware/rate-limit';
 import * as agentService from './lib/agent-service';
 import * as picksService from './lib/picks-service';
 import * as analyticsService from './lib/analytics-service';
+import * as activityService from './lib/activity-service';
+import { sseEmitter } from './lib/sse-emitter';
 import {
   CreateAgentSchema,
   UpdateAgentSchema,
@@ -82,13 +84,13 @@ app.post('/api/login', async (c) => {
   sessions.set(token, 'admin');
 
   return c.json({ success: true }, {
-    headers: { 'Set-Cookie': `session=${token}; HttpOnly; Path=/; SameSite=Strict; Max-Age=86400` },
+    headers: { 'Set-Cookie': `session=${token}; HttpOnly; Path=/; SameSite=Lax; Max-Age=86400` },
   });
 });
 
 app.post('/api/logout', (c) => {
   return c.json({ success: true }, {
-    headers: { 'Set-Cookie': 'session=; HttpOnly; Path=/; SameSite=Strict; Max-Age=0' },
+    headers: { 'Set-Cookie': 'session=; HttpOnly; Path=/; SameSite=Lax; Max-Age=0' },
   });
 });
 
@@ -405,12 +407,67 @@ exportRoutes.get('/csv', (c) => {
   });
 });
 
+// --- Activity routes (paginated REST requires auth) ---
+
+const activityRoutes = new Hono();
+activityRoutes.get('/', sessionAuthMiddleware, (c) => {
+  const limit = parseInt(c.req.query('limit') || '50');
+  const offset = parseInt(c.req.query('offset') || '0');
+  const agent_id = c.req.query('agent_id');
+  const action = c.req.query('action');
+
+  const activities = activityService.getActivities({ limit, offset, agent_id, action });
+  return c.json({ activities });
+});
+
+// SSE stream endpoint
+activityRoutes.get('/stream', async (c) => {
+  const encoder = new TextEncoder();
+  const stream = new TransformStream();
+  const writer = stream.writable.getWriter();
+
+  // Subscribe to SSE events
+  const unsubscribe = sseEmitter.subscribe(async (chunk: Uint8Array) => {
+    try {
+      await writer.write(chunk);
+    } catch {
+      // Client disconnected
+    }
+  });
+
+  // Send initial comment to keep connection alive
+  await writer.write(encoder.encode(': connected\n\n'));
+
+  // Send buffered events (recent activity)
+  const recent = activityService.getActivities({ limit: 20 });
+  for (const activity of recent) {
+    await writer.write(encoder.encode(
+      `event: activity\ndata: ${JSON.stringify(activity)}\n\n`
+    ));
+  }
+
+  c.req.raw.signal?.addEventListener('abort', () => {
+    unsubscribe();
+    writer.close();
+  });
+
+  return new Response(stream.readable, {
+    headers: {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive',
+      'X-Accel-Buffering': 'no',
+    },
+  });
+});
+
 // Mount routes
 app.route('/api/admin/agents', agentRoutes);
 app.route('/api/admin/picks', picksRoutes);
 app.route('/api/agent/picks', agentPicksRoutes);
 app.route('/api/admin/analytics', analyticsRoutes);
 app.route('/api/admin/export', exportRoutes);
+app.route('/api/activity', activityRoutes);
 
 // Health check
 app.get('/api/health', (c) => {
