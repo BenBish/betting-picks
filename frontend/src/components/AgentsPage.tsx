@@ -54,19 +54,19 @@ export function AgentsPage() {
         <h2 className="text-2xl font-bold">Agents</h2>
         <button
           onClick={() => setShowForm(!showForm)}
-          className="rounded-md bg-primary px-3 py-1.5 text-sm text-primary-foreground hover:bg-primary/90"
+          className="rounded-md bg-primary px-3 py-2 text-sm text-primary-foreground hover:bg-primary/90 min-h-[44px]"
         >
           {showForm ? 'Cancel' : '+ New Agent'}
         </button>
       </div>
 
       {showForm && (
-        <form onSubmit={handleSubmit} className="mt-4 flex gap-3">
+        <form onSubmit={handleSubmit} className="mt-4 flex flex-col sm:flex-row gap-3">
           <input
             type="text"
             required
             placeholder="Agent name"
-            className="flex-1 rounded border border-input bg-background px-3 py-1.5 text-sm"
+            className="flex-1 rounded border border-input bg-background px-3 py-2 text-sm min-h-[44px]"
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
             autoFocus
@@ -74,7 +74,7 @@ export function AgentsPage() {
           <button
             type="submit"
             disabled={createMutation.isPending}
-            className="rounded-md bg-primary px-4 py-1.5 text-sm text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+            className="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground hover:bg-primary/90 disabled:opacity-50 min-h-[44px] sm:w-auto w-full"
           >
             {createMutation.isPending ? 'Creating...' : 'Create'}
           </button>
@@ -92,14 +92,17 @@ export function AgentsPage() {
           {agents.map((agent) => (
             <div
               key={agent.id}
-              className={`rounded-lg border p-4 ${
+              className={`rounded-lg border p-3 md:p-4 ${
                 agent.is_active ? 'border-border' : 'border-border/50 opacity-60'
               }`}
             >
-              <div className="flex items-start justify-between">
-                <div>
-                  <h3 className="font-semibold">{agent.name}</h3>
-                  <p className="mt-1 text-xs text-muted-foreground">
+              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-semibold">{agent.name}</h3>
+                    <StatusBadge active={agent.is_active} />
+                  </div>
+                  <p className="mt-1 text-xs text-muted-foreground break-all">
                     Key: <code className="rounded bg-muted px-1">{agent.key_prefix}...</code>
                   </p>
                   <p className="mt-1 text-xs text-muted-foreground">
@@ -112,12 +115,12 @@ export function AgentsPage() {
                     )}
                   </p>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex flex-col sm:flex-row gap-2">
                   <button
                     onClick={() =>
                       toggleMutation.mutate({ id: agent.id, is_active: !agent.is_active })
                     }
-                    className={`rounded px-2 py-1 text-xs ${
+                    className={`rounded px-3 py-2 text-sm min-h-[44px] w-full sm:w-auto ${
                       agent.is_active
                         ? 'text-destructive hover:bg-destructive/10'
                         : 'text-success hover:bg-success/10'
@@ -127,27 +130,23 @@ export function AgentsPage() {
                   </button>
                   <button
                     onClick={() => rotateMutation.mutate(agent.id)}
-                    className="rounded px-2 py-1 text-xs text-muted-foreground hover:text-foreground"
+                    className="rounded px-3 py-2 text-sm min-h-[44px] text-muted-foreground hover:text-foreground w-full sm:w-auto"
                   >
                     Rotate Key
                   </button>
                   <button
                     onClick={() => deleteMutation.mutate(agent.id)}
-                    className="rounded px-2 py-1 text-xs text-destructive hover:bg-destructive/10"
+                    className="rounded px-3 py-2 text-sm min-h-[44px] text-destructive hover:bg-destructive/10 w-full sm:w-auto"
                   >
                     Delete
                   </button>
                 </div>
               </div>
 
-              <div className="mt-2">
-                <StatusBadge active={agent.is_active} />
-              </div>
-
               {copiedKey && (
                 <div className="mt-3 rounded bg-muted p-2">
                   <p className="text-xs text-muted-foreground">New API Key (copy now - shown once):</p>
-                  <p className="mt-1 font-mono text-sm">{copiedKey}</p>
+                  <p className="mt-1 font-mono text-sm break-all">{copiedKey}</p>
                 </div>
               )}
             </div>
@@ -161,7 +160,7 @@ export function AgentsPage() {
 function StatusBadge({ active }: { active: boolean }) {
   return (
     <span
-      className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${
+      className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-medium shrink-0 ${
         active
           ? 'bg-success/20 text-success'
           : 'bg-muted text-muted-foreground'

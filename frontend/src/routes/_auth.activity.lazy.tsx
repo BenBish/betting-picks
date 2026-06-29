@@ -38,15 +38,15 @@ function ActivityPage() {
         <h2 className="text-2xl font-bold">Activity Log</h2>
         <button
           onClick={() => refetch()}
-          className="rounded-md px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground"
+          className="rounded-md px-3 py-2 text-sm min-h-[44px] text-muted-foreground hover:text-foreground"
         >
           Refresh
         </button>
       </div>
 
-      <div className="mt-4 flex flex-wrap gap-3">
+      <div className="mt-4 flex flex-col sm:flex-row gap-3">
         <select
-          className="rounded border border-input bg-background px-2 py-1.5 text-sm"
+          className="rounded border border-input bg-background px-2 py-2 text-sm min-h-[44px] flex-1 sm:flex-none"
           value={actionFilter}
           onChange={(e) => { setActionFilter(e.target.value); setOffset(0); }}
         >
@@ -57,7 +57,7 @@ function ActivityPage() {
         <input
           type="text"
           placeholder="Filter by agent ID..."
-          className="rounded border border-input bg-background px-2 py-1.5 text-sm"
+          className="rounded border border-input bg-background px-2 py-2 text-sm min-h-[44px] flex-1"
           value={agentFilter}
           onChange={(e) => { setAgentFilter(e.target.value); setOffset(0); }}
         />
@@ -78,7 +78,7 @@ function ActivityPage() {
             <div className="flex justify-center pt-4">
               <button
                 onClick={() => setOffset((o) => o + limit)}
-                className="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground hover:bg-primary/90"
+                className="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground hover:bg-primary/90 min-h-[44px]"
               >
                 Load More
               </button>
@@ -95,7 +95,7 @@ function ActivityRow({ activity }: { activity: ActivityLog }) {
   const actionColor = getActionColor(activity.action);
 
   return (
-    <div className="flex items-start gap-3 rounded-lg border border-border/50 px-3 py-2.5 hover:bg-muted/30">
+    <div className="flex items-start gap-3 rounded-lg border border-border/50 px-3 py-3 hover:bg-muted/30">
       <div className={`shrink-0 rounded px-1.5 py-0.5 text-xs font-medium ${actionColor}`}>
         {actionLabel}
       </div>

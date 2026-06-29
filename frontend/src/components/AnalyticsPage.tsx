@@ -50,7 +50,7 @@ export function AnalyticsPage() {
         <h2 className="text-2xl font-bold">Analytics</h2>
         <button
           onClick={downloadCsv}
-          className="rounded-md bg-primary px-3 py-1.5 text-sm text-primary-foreground hover:bg-primary/90"
+          className="rounded-md bg-primary px-3 py-2 text-sm text-primary-foreground hover:bg-primary/90 min-h-[44px]"
         >
           Export CSV
         </button>
@@ -82,16 +82,16 @@ export function AnalyticsPage() {
 
       {/* Daily P&L Chart */}
       {dailyPnL.length > 0 && (
-        <div className="mt-6 rounded-lg border border-border bg-card p-4">
-          <h3 className="mb-4 text-lg font-semibold">Daily P&L</h3>
-          <div className="h-64">
+        <div className="mt-6 rounded-lg border border-border bg-card p-3 md:p-4">
+          <h3 className="mb-3 md:mb-4 text-base md:text-lg font-semibold">Daily P&L</h3>
+          <div className="h-48 md:h-64">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={dailyPnL}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#333" />
-                <XAxis dataKey="date" stroke="#9ca3af" />
-                <YAxis stroke="#9ca3af" />
+                <XAxis dataKey="date" stroke="#9ca3af" fontSize={11} tickFormatter={(v) => v.slice(5)} />
+                <YAxis stroke="#9ca3af" fontSize={11} />
                 <Tooltip
-                  contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #374151', color: '#f3f4f6' }}
+                  contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #374151', color: '#f3f4f6', fontSize: 12 }}
                 />
                 <Bar dataKey="profit_loss">
                   {dailyPnL.map((entry, index) => (
@@ -109,16 +109,16 @@ export function AnalyticsPage() {
 
       {/* Cumulative P&L Chart */}
        {dailyPnL.length > 0 && (
-        <div className="mt-6 rounded-lg border border-border bg-card p-4">
-          <h3 className="mb-4 text-lg font-semibold">Cumulative P&L</h3>
-          <div className="h-64">
+        <div className="mt-6 rounded-lg border border-border bg-card p-3 md:p-4">
+          <h3 className="mb-3 md:mb-4 text-base md:text-lg font-semibold">Cumulative P&L</h3>
+          <div className="h-48 md:h-64">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={computeCumulativePnL(dailyPnL)}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#333" />
-                <XAxis dataKey="date" stroke="#9ca3af" />
-                <YAxis stroke="#9ca3af" />
+                <XAxis dataKey="date" stroke="#9ca3af" fontSize={11} tickFormatter={(v) => v.slice(5)} />
+                <YAxis stroke="#9ca3af" fontSize={11} />
                 <Tooltip
-                  contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #374151', color: '#f3f4f6' }}
+                  contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #374151', color: '#f3f4f6', fontSize: 12 }}
                 />
                 <Line
                   type="monotone"
@@ -135,16 +135,16 @@ export function AnalyticsPage() {
 
       {/* CLV Distribution Histogram */}
       {allPicks.some((p: any) => p.clv_percent !== null) && (
-        <div className="mt-6 rounded-lg border border-border bg-card p-4">
-          <h3 className="mb-4 text-lg font-semibold">CLV% Distribution</h3>
-          <div className="h-64">
+        <div className="mt-6 rounded-lg border border-border bg-card p-3 md:p-4">
+          <h3 className="mb-3 md:mb-4 text-base md:text-lg font-semibold">CLV% Distribution</h3>
+          <div className="h-48 md:h-64">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={computeClvHistogram(allPicks)}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#333" />
-                <XAxis dataKey="bucket" stroke="#9ca3af" />
-                <YAxis stroke="#9ca3af" />
+                <XAxis dataKey="bucket" stroke="#9ca3af" fontSize={11} />
+                <YAxis stroke="#9ca3af" fontSize={11} />
                 <Tooltip
-                  contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #374151', color: '#f3f4f6' }}
+                  contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #374151', color: '#f3f4f6', fontSize: 12 }}
                 />
                 <Bar dataKey="count">
                   {computeClvHistogram(allPicks).map((entry, index) => (
