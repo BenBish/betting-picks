@@ -257,7 +257,11 @@ describe('picks-service', () => {
 
     expect(results.length).toBe(2);
     expect(results[0].success).toBe(true);
+    expect(results[0].pick).toBeDefined();
+    expect(results[0].pick?.id).toBeDefined();
     expect(results[1].success).toBe(true);
+    expect(results[1].pick).toBeDefined();
+    expect(results[1].pick?.id).toBeDefined();
   });
 
   it('batch updates closing lines', () => {

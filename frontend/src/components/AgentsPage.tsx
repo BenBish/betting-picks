@@ -6,7 +6,10 @@ export function AgentsPage() {
   const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
   const [newName, setNewName] = useState('');
-  const [copiedKey, setCopiedKey] = useState<string | null>(null);
+  // Map agent id → full key string (only set on create or rotate)
+  const [pendingKeys, setPendingKeys] = useState<Record<string, string>>({});
+  // Track which agent had its key just copied to clipboard
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
   const { data: agents = [], isLoading } = useQuery({
     queryKey: ['agents'],
@@ -15,7 +18,9 @@ export function AgentsPage() {
 
   const createMutation = useMutation({
     mutationFn: (name: string) => createAgent(name),
-    onSuccess: () => {
+    onSuccess: (data) => {
+      // Store the full key so it renders in the new agent card
+      setPendingKeys((prev) => ({ ...prev, [data.agent.id]: data.key }));
       queryClient.invalidateQueries({ queryKey: ['agents'] });
       setShowForm(false);
       setNewName('');
@@ -34,12 +39,25 @@ export function AgentsPage() {
 
   const rotateMutation = useMutation({
     mutationFn: (id: string) => rotateAgentKey(id),
-    onSuccess: (key) => {
-      setCopiedKey(key);
+    onSuccess: (key, agentId) => {
+      setPendingKeys((prev) => ({ ...prev, [agentId]: key }));
       queryClient.invalidateQueries({ queryKey: ['agents'] });
-      setTimeout(() => setCopiedKey(null), 3000);
     },
   });
+
+  const handleCopyKey = (agentId: string, key: string) => {
+    navigator.clipboard.writeText(key);
+    setCopiedId(agentId);
+    setTimeout(() => setCopiedId(null), 2000);
+  };
+
+  const handleDismissKey = (agentId: string) => {
+    setPendingKeys((prev) => {
+      const next = { ...prev };
+      delete next[agentId];
+      return next;
+    });
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -102,9 +120,32 @@ export function AgentsPage() {
                     <h3 className="font-semibold">{agent.name}</h3>
                     <StatusBadge active={agent.is_active} />
                   </div>
-                  <p className="mt-1 text-xs text-muted-foreground break-all">
-                    Key: <code className="rounded bg-muted px-1">{agent.key_prefix}...</code>
-                  </p>
+                  {pendingKeys[agent.id] ? (
+                    <div className="mt-1">
+                      <p className="text-xs text-muted-foreground">New API Key (copy now — shown once):</p>
+                      <div className="mt-1 flex items-center gap-2">
+                        <code className="flex-1 rounded bg-muted px-2 py-1 font-mono text-xs break-all select-all">
+                          {pendingKeys[agent.id]}
+                        </code>
+                        <button
+                          onClick={() => handleCopyKey(agent.id, pendingKeys[agent.id])}
+                          className="shrink-0 rounded px-3 py-2 text-sm min-h-[44px] bg-primary text-primary-foreground hover:bg-primary/90"
+                        >
+                          {copiedId === agent.id ? 'Copied!' : 'Copy'}
+                        </button>
+                      </div>
+                      <button
+                        onClick={() => handleDismissKey(agent.id)}
+                        className="mt-1 text-xs text-muted-foreground hover:text-foreground"
+                      >
+                        Dismiss
+                      </button>
+                    </div>
+                  ) : (
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Key: <code className="rounded bg-muted px-1">{agent.key_prefix}...</code>
+                    </p>
+                  )}
                   <p className="mt-1 text-xs text-muted-foreground">
                     Created: {new Date(agent.created_at).toLocaleDateString()}
                     {agent.last_active_at && (
@@ -142,13 +183,6 @@ export function AgentsPage() {
                   </button>
                 </div>
               </div>
-
-              {copiedKey && (
-                <div className="mt-3 rounded bg-muted p-2">
-                  <p className="text-xs text-muted-foreground">New API Key (copy now - shown once):</p>
-                  <p className="mt-1 font-mono text-sm break-all">{copiedKey}</p>
-                </div>
-              )}
             </div>
           ))}
         </div>

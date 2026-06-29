@@ -16,8 +16,8 @@ export const CreatePickSchema = z.object({
   away_team: z.string().trim().min(1, 'away_team is required'),
   market: z.string().trim().min(1, 'market is required'),
   selection: z.string().trim().min(1, 'selection is required'),
-  recommended_odds: z.number().min(1, 'recommended_odds must be greater than 1'),
-  closing_odds: z.number().min(1, 'closing_odds must be greater than 1').optional(),
+  recommended_odds: z.number().gt(1, 'recommended_odds must be greater than 1'),
+  closing_odds: z.number().gt(1, 'closing_odds must be greater than 1').optional(),
   stake: z.number().min(0, 'stake must be greater than or equal to 0').default(1),
   notes: z.string().optional(),
   result: ResultSchema.optional(),
@@ -37,14 +37,14 @@ export const UpdatePickSchema = z.object({
   away_team: z.string().trim().min(1).optional(),
   market: z.string().trim().min(1).optional(),
   selection: z.string().trim().min(1).optional(),
-  recommended_odds: z.number().min(1).optional(),
-  closing_odds: z.number().min(1, 'closing_odds must be greater than 1').optional(),
+  recommended_odds: z.number().gt(1).optional(),
+  closing_odds: z.number().gt(1, 'closing_odds must be greater than 1').optional(),
   stake: z.number().min(0).optional(),
   notes: z.string().optional(),
 });
 
 export const ClosingLineSchema = z.object({
-  closing_odds: z.number().min(1, 'closing_odds must be greater than 1'),
+  closing_odds: z.number().gt(1, 'closing_odds must be greater than 1'),
 });
 
 export const ResultSettlementSchema = z.object({
@@ -58,7 +58,7 @@ export const BatchCreatePicksSchema = z.object({
 export const BatchClosingLinesSchema = z.object({
   updates: z.array(z.object({
     id: z.string(),
-    closing_odds: z.number().min(1, 'closing_odds must be greater than 1'),
+    closing_odds: z.number().gt(1, 'closing_odds must be greater than 1'),
   })).min(1).max(50),
 });
 

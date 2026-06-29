@@ -429,9 +429,10 @@ export function batchCreatePicks(picks: Array<{
             'pick.created',
             `${pick.home_team} vs ${pick.away_team} — ${pick.selection} @ ${pick.recommended_odds}`
           );
+          results.push({ success: true, pick });
+        } else {
+          results.push({ success: true });
         }
-
-        results.push({ success: true });
       } catch (err) {
         results.push({ success: false, error: String(err) });
       }
