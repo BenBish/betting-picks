@@ -207,7 +207,7 @@ function AgentCard({
 }) {
   return (
     <Card className={agent.is_active ? '' : 'opacity-60'}>
-      <CardContent className="pt-4">
+      <CardContent className="pt-1">
         <div className="flex items-start justify-between gap-3">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
