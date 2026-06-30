@@ -35,17 +35,35 @@ backend/src/
 frontend/src/
   main.tsx                  # Entry point
   router.ts                 # TanStack Router setup
-  index.css                 # Tailwind base styles
+  index.css                 # Tailwind base styles + shadcn imports
   lib/
     api.ts                  # API client with typed fetch wrappers
+    utils.ts                # cn() utility (clsx + tailwind-merge)
   components/
+    ui/                     # shadcn/ui primitives
+      button.tsx            # Button with forwardRef + asChild (Radix Slot)
+      badge.tsx             # Badge with forwardRef + asChild
+      card.tsx              # Card, CardHeader, CardContent, CardFooter
+      dialog.tsx            # Dialog with Portal, Overlay, Close button
+      alert-dialog.tsx      # AlertDialog with destructive action support
+      dropdown-menu.tsx     # DropdownMenu for action menus
+      table.tsx             # Table with overflow-x-auto wrapper
+      input.tsx             # Styled input
+      textarea.tsx          # Styled textarea
+      select.tsx            # Select dropdown (Radix)
+      checkbox.tsx          # Checkbox
+      label.tsx             # Form label
+      alert.tsx             # Alert banners
+      separator.tsx         # Visual dividers
+      scroll-area.tsx       # Scrollable containers
+      sonner.tsx            # Toast notifications
     LoginPage.tsx           # Auth login form
     PicksPage.tsx           # Picks table, create form, settle, closing line, activity sidebar
     AnalyticsPage.tsx       # Summary cards, charts (Recharts), by-agent/market/competition
     AgentsPage.tsx          # Agent CRUD, key rotation
     ActivityFeed.tsx        # Collapsible activity feed component
   routes/
-    __root.tsx              # Root route with QueryClientProvider
+    __root.tsx              # Root route with QueryClientProvider + Sonner Toaster
     _auth.tsx               # Authenticated layout, SSE subscription, nav guard
     _auth.index.lazy.tsx    # / → PicksPage
     _auth.analytics.lazy.tsx # /analytics → AnalyticsPage
@@ -152,3 +170,12 @@ PORT=3000
 - **Soft delete**: Agents are deactivated (`is_active = 0`) rather than hard-deleted. Use `getAllAgents(true)` to include inactive.
 - **Batch response**: 207 Multi-Status with per-item status codes.
 - **Tests**: Use `bun test` in backend. Each test file creates a fresh temp SQLite DB.
+
+### shadcn/ui Gotchas
+
+- **Tailwind v3**: Project uses Tailwind v3.4. Do NOT use Tailwind v4 syntax (`--spacing()`, CSS variable arbitrary values like `py-(--var)`).
+- **forwardRef required**: `Button` and `Badge` use `React.forwardRef` — required for Radix `Slot.Root` (`asChild` prop used by `DropdownMenuTrigger`, `DialogTrigger`).
+- **AlertDialog in DropdownMenu**: `AlertDialogTrigger asChild` inside `DropdownMenuContent` is broken in Radix UI. Use state-based `open={deleteId !== null}` pattern instead.
+- **Card spacing**: Card root provides `py-4` + `gap-4`. CardHeader/CardContent provide `px-4`. When CardHeader is omitted, use `pt-1` on CardContent (not `pt-4`).
+- **Table overflow**: Table component includes `overflow-x-auto` wrapper. Do NOT double-wrap. Use column width constraints (`w-[...]`, `max-w-[...]`) + `whitespace-normal` for wrapping columns.
+- **No `'use client'`**: This is a Vite SPA (not Next.js RSC). The `'use client'` directive is unnecessary.

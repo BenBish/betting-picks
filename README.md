@@ -2,7 +2,7 @@
 
 Sports betting picks management system with agent API, real-time activity feed, and analytics dashboard.
 
-**Stack:** Bun + Hono + SQLite (backend) · Vite + React + TanStack Router + Tailwind (frontend)
+**Stack:** Bun + Hono + SQLite (backend) · Vite + React + TanStack Router + Tailwind + shadcn/ui (frontend)
 
 ---
 
@@ -47,13 +47,13 @@ backend/                    frontend/
 │   ├── index.ts            │   ├── router.ts
 │   ├── lib/                │   ├── lib/api.ts
 │   │   ├── db.ts           │   ├── components/
-│   │   ├── picks-service.ts│   │   ├── PicksPage.tsx
-│   │   ├── agent-service.ts│   │   ├── AnalyticsPage.tsx
-│   │   ├── analytics-service.ts │ ├── AgentsPage.tsx
-│   │   ├── activity-service.ts  │ ├── LoginPage.tsx
-│   │   ├── sse-emitter.ts       │ └── routes/
-│   │   ├── calculations.ts
-│   │   └── validations.ts
+│   │   ├── picks-service.ts│   │   ├── ui/           # shadcn/ui primitives
+│   │   ├── agent-service.ts│   │   ├── PicksPage.tsx
+│   │   ├── analytics-svc.ts│   │   ├── AnalyticsPage.tsx
+│   │   ├── activity-svc.ts │   │   ├── AgentsPage.tsx
+│   │   ├── sse-emitter.ts  │   │   ├── LoginPage.tsx
+│   │   ├── calculations.ts │   │   └── ActivityFeed.tsx
+│   │   └── validations.ts  │   └── routes/
 │   ├── middleware/
 │   │   ├── auth.ts
 │   │   └── rate-limit.ts
