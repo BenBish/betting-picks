@@ -150,7 +150,7 @@ function AuthLayout() {
 
 function NavLink({ to, onClick, children, mobile }: { to: string; onClick: () => void; children: string; mobile?: boolean }) {
   const location = useLocation();
-  const isActive = to === '/' ? location.pathname === '/' : location.pathname === to;
+  const isActive = to === '/' ? location.pathname === '/' : location.pathname.startsWith(to + '/') || location.pathname === to;
 
   return (
     <Button
@@ -158,9 +158,8 @@ function NavLink({ to, onClick, children, mobile }: { to: string; onClick: () =>
       variant={isActive ? 'secondary' : 'ghost'}
       size="sm"
       className={mobile ? 'w-full justify-start' : ''}
-      onClick={onClick}
     >
-      <Link to={to}>{children}</Link>
+      <Link to={to} onClick={onClick}>{children}</Link>
     </Button>
   );
 }

@@ -288,7 +288,7 @@ export function AnalyticsPage() {
 function StatCard({ label, value, positive }: { label: string; value: string | number; positive?: boolean }) {
   return (
     <Card>
-      <CardContent className="pt-4">
+      <CardContent className="pt-1">
         <div className="text-xs text-muted-foreground">{label}</div>
         <div className={`mt-1 text-xl font-bold ${positive === true ? 'text-success' : positive === false ? 'text-destructive' : ''}`}>
           {value}
