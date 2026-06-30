@@ -1,3 +1,5 @@
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -25,11 +27,27 @@
     --success-foreground: 210 40% 98%;
     --warning: 38 92% 50%;
     --warning-foreground: 222.2 47.4% 1.2%;
+    --popover: 224 71% 4%;
+    --popover-foreground: 213 31% 91%;
+    --sidebar: 224 71% 4%;
+    --sidebar-foreground: 213 31% 91%;
+    --sidebar-primary: 210 40% 98%;
+    --sidebar-primary-foreground: 222.2 47.4% 1.2%;
+    --sidebar-accent: 223 47% 11%;
+    --sidebar-accent-foreground: 210 40% 98%;
+    --sidebar-border: 216 34% 17%;
+    --sidebar-ring: 216 34% 59%;
+    --chart-1: 210 40% 98%;
+    --chart-2: 222.2 47.4% 11.2%;
+    --chart-3: 215.4 16.3% 56.9%;
+    --chart-4: 216 34% 59%;
+    --chart-5: 224 71% 4%;
     --radius: 0.5rem;
   }
 
   * {
     border-color: hsl(var(--border));
+    @apply border-border outline-ring/50;
   }
 
   body {
@@ -37,5 +55,6 @@
     color: hsl(var(--foreground));
     font-family: system-ui, -apple-system, sans-serif;
     -webkit-font-smoothing: antialiased;
+    @apply bg-background text-foreground;
   }
 }
