@@ -1,8 +1,11 @@
-import { createFileRoute, Outlet, redirect, useNavigate } from '@tanstack/react-router';
+import { createFileRoute, Outlet, redirect } from '@tanstack/react-router';
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { checkAuth, logout } from '../lib/api';
 import { Link, useLocation } from '@tanstack/react-router';
 import { useQueryClient } from '@tanstack/react-query';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { LogOut, Menu, X } from 'lucide-react';
 
 export const Route = createFileRoute('/_auth')({
   beforeLoad: async () => {
@@ -88,33 +91,28 @@ function AuthLayout() {
           <div className="flex items-center gap-3">
             {/* Desktop status + logout */}
             <div className="hidden md:flex items-center gap-3">
-              <div className="flex items-center gap-1.5">
-                <div className={`h-2 w-2 rounded-full ${sseConnected ? 'bg-success' : 'bg-warning'}`} />
-                <span className="text-xs text-muted-foreground">{sseConnected ? 'Live' : 'Polling'}</span>
-              </div>
-              <button
+              <Badge variant="secondary" className="gap-1.5 font-normal">
+                <div className={`h-1.5 w-1.5 rounded-full ${sseConnected ? 'bg-success' : 'bg-warning'}`} />
+                {sseConnected ? 'Live' : 'Polling'}
+              </Badge>
+              <Button
+                variant="ghost"
+                size="sm"
                 onClick={() => logout().then(() => (window.location.href = '/login'))}
-                className="rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors hover:text-foreground min-h-[44px]"
               >
-                Logout
-              </button>
+                <LogOut className="mr-1 size-4" /> Logout
+              </Button>
             </div>
             {/* Mobile hamburger */}
-            <button
+            <Button
+              variant="ghost"
+              size="icon-sm"
               onClick={(e) => { e.stopPropagation(); setMobileMenuOpen(!mobileMenuOpen); }}
-              className="md:hidden rounded-md p-2 min-w-[44px] min-h-[44px] flex items-center justify-center text-muted-foreground hover:text-foreground"
+              className="md:hidden"
               aria-label="Toggle menu"
             >
-              {mobileMenuOpen ? (
-                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              ) : (
-                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
-                </svg>
-              )}
-            </button>
+              {mobileMenuOpen ? <X className="size-5" /> : <Menu className="size-5" />}
+            </Button>
           </div>
         </div>
         {/* Mobile menu panel */}
@@ -126,16 +124,18 @@ function AuthLayout() {
               <NavLink to="/agents" onClick={handleNavClick} mobile>Agents</NavLink>
               <NavLink to="/activity" onClick={handleNavClick} mobile>Activity</NavLink>
               <div className="flex items-center gap-3 pt-2 border-t border-border mt-2">
-                <div className="flex items-center gap-1.5">
-                  <div className={`h-2 w-2 rounded-full ${sseConnected ? 'bg-success' : 'bg-warning'}`} />
-                  <span className="text-xs text-muted-foreground">{sseConnected ? 'Live' : 'Polling'}</span>
-                </div>
-                <button
+                <Badge variant="secondary" className="gap-1.5 font-normal">
+                  <div className={`h-1.5 w-1.5 rounded-full ${sseConnected ? 'bg-success' : 'bg-warning'}`} />
+                  {sseConnected ? 'Live' : 'Polling'}
+                </Badge>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="ml-auto"
                   onClick={() => { handleNavClick(); logout().then(() => (window.location.href = '/login')); }}
-                  className="ml-auto rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors hover:text-foreground min-h-[44px]"
                 >
-                  Logout
-                </button>
+                  <LogOut className="mr-1 size-4" /> Logout
+                </Button>
               </div>
             </div>
           </div>
@@ -149,17 +149,18 @@ function AuthLayout() {
 }
 
 function NavLink({ to, onClick, children, mobile }: { to: string; onClick: () => void; children: string; mobile?: boolean }) {
+  const location = useLocation();
+  const isActive = to === '/' ? location.pathname === '/' : location.pathname === to;
+
   return (
-    <Link
-      to={to}
+    <Button
+      asChild
+      variant={isActive ? 'secondary' : 'ghost'}
+      size="sm"
+      className={mobile ? 'w-full justify-start' : ''}
       onClick={onClick}
-      className={
-        mobile
-          ? 'block rounded-md px-3 py-3 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground min-h-[44px]'
-          : 'rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground min-h-[44px]'
-      }
     >
-      {children}
-    </Link>
+      <Link to={to}>{children}</Link>
+    </Button>
   );
 }

@@ -2,6 +2,19 @@ import { createLazyFileRoute } from '@tanstack/react-router';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { getActivity, ActivityLog } from '../lib/api';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Separator } from '@/components/ui/separator';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { RefreshCw } from 'lucide-react';
 
 export const Route = createLazyFileRoute('/_auth/activity')({
   component: ActivityPage,
@@ -36,52 +49,56 @@ function ActivityPage() {
     <>
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold">Activity Log</h2>
-        <button
-          onClick={() => refetch()}
-          className="rounded-md px-3 py-2 text-sm min-h-[44px] text-muted-foreground hover:text-foreground"
-        >
-          Refresh
-        </button>
+        <Button variant="ghost" size="sm" onClick={() => refetch()}>
+          <RefreshCw className="mr-1 size-4" /> Refresh
+        </Button>
       </div>
 
       <div className="mt-4 flex flex-col sm:flex-row gap-3">
-        <select
-          className="rounded border border-input bg-background px-2 py-2 text-sm min-h-[44px] flex-1 sm:flex-none"
-          value={actionFilter}
-          onChange={(e) => { setActionFilter(e.target.value); setOffset(0); }}
+        <Select
+          value={actionFilter || '__all__'}
+          onValueChange={(val) => { setActionFilter(val === '__all__' ? '' : val); setOffset(0); }}
         >
-          {actions.map((a) => (
-            <option key={a.value} value={a.value}>{a.label}</option>
-          ))}
-        </select>
-        <input
-          type="text"
+          <SelectTrigger className="flex-1 sm:w-[200px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {actions.map((a) => (
+              <SelectItem key={a.value} value={a.value || '__all__'}>{a.label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Input
           placeholder="Filter by agent ID..."
-          className="rounded border border-input bg-background px-2 py-2 text-sm min-h-[44px] flex-1"
           value={agentFilter}
           onChange={(e) => { setAgentFilter(e.target.value); setOffset(0); }}
+          className="flex-1"
         />
       </div>
 
       {isLoading ? (
         <div className="mt-6 text-muted-foreground">Loading activity...</div>
       ) : activities.length === 0 ? (
-        <div className="mt-6 rounded-lg border border-border p-8 text-center text-muted-foreground">
+        <div className="mt-6 rounded-lg border bg-card p-8 text-center text-muted-foreground">
           No activity recorded yet.
         </div>
       ) : (
-        <div className="mt-6 space-y-1">
-          {activities.map((a) => (
-            <ActivityRow key={a.id} activity={a} />
-          ))}
+        <div className="mt-6">
+          <ScrollArea className="max-h-[60vh]">
+            <div className="space-y-1">
+              {activities.map((a, i) => (
+                <div key={a.id}>
+                  <ActivityRow activity={a} />
+                  {i < activities.length - 1 && <Separator className="my-1" />}
+                </div>
+              ))}
+            </div>
+          </ScrollArea>
           {hasMore && (
             <div className="flex justify-center pt-4">
-              <button
-                onClick={() => setOffset((o) => o + limit)}
-                className="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground hover:bg-primary/90 min-h-[44px]"
-              >
+              <Button variant="outline" size="sm" onClick={() => setOffset((o) => o + limit)}>
                 Load More
-              </button>
+              </Button>
             </div>
           )}
         </div>
@@ -92,13 +109,13 @@ function ActivityPage() {
 
 function ActivityRow({ activity }: { activity: ActivityLog }) {
   const actionLabel = getActionLabel(activity.action);
-  const actionColor = getActionColor(activity.action);
+  const actionVariant = getActionVariant(activity.action);
 
   return (
-    <div className="flex items-start gap-3 rounded-lg border border-border/50 px-3 py-3 hover:bg-muted/30">
-      <div className={`shrink-0 rounded px-1.5 py-0.5 text-xs font-medium ${actionColor}`}>
+    <div className="flex items-start gap-3 rounded-lg px-3 py-3 hover:bg-muted/30">
+      <Badge variant={actionVariant} className="shrink-0">
         {actionLabel}
-      </div>
+      </Badge>
       <div className="min-w-0 flex-1">
         {activity.details && (
           <div className="text-sm">{activity.details}</div>
@@ -128,11 +145,11 @@ function getActionLabel(action: string): string {
   return labels[action] || action;
 }
 
-function getActionColor(action: string): string {
-  if (action.startsWith('pick.settled')) return 'bg-success/10 text-success';
-  if (action.startsWith('pick.deleted') || action.startsWith('agent.deleted')) return 'bg-destructive/10 text-destructive';
-  if (action.startsWith('pick.created')) return 'bg-primary/10 text-primary';
-  return 'bg-muted/50 text-muted-foreground';
+function getActionVariant(action: string): 'default' | 'destructive' | 'secondary' | 'outline' {
+  if (action.startsWith('pick.settled')) return 'default';
+  if (action.startsWith('pick.deleted') || action.startsWith('agent.deleted')) return 'destructive';
+  if (action.startsWith('pick.created')) return 'secondary';
+  return 'outline';
 }
 
 function formatTime(iso: string): string {

@@ -4,6 +4,17 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   Cell, LineChart, Line,
 } from 'recharts';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from '@/components/ui/table';
+import { Download } from 'lucide-react';
 
 const COLORS = ['#3b82f6', '#ef4444', '#f59e0b', '#10b981'];
 
@@ -39,21 +50,16 @@ export function AnalyticsPage() {
   });
 
   if (loadingMain) {
-    return (
-      <div className="text-muted-foreground">Loading analytics...</div>
-    );
+    return <div className="text-muted-foreground">Loading analytics...</div>;
   }
 
   return (
     <>
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold">Analytics</h2>
-        <button
-          onClick={downloadCsv}
-          className="rounded-md bg-primary px-3 py-2 text-sm text-primary-foreground hover:bg-primary/90 min-h-[44px]"
-        >
-          Export CSV
-        </button>
+        <Button variant="outline" size="sm" onClick={downloadCsv}>
+          <Download className="mr-1 size-4" /> Export CSV
+        </Button>
       </div>
 
       {/* Summary Cards */}
@@ -82,179 +88,197 @@ export function AnalyticsPage() {
 
       {/* Daily P&L Chart */}
       {dailyPnL.length > 0 && (
-        <div className="mt-6 rounded-lg border border-border bg-card p-3 md:p-4">
-          <h3 className="mb-3 md:mb-4 text-base md:text-lg font-semibold">Daily P&L</h3>
-          <div className="h-48 md:h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={dailyPnL}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#333" />
-                <XAxis dataKey="date" stroke="#9ca3af" fontSize={11} tickFormatter={(v) => v.slice(5)} />
-                <YAxis stroke="#9ca3af" fontSize={11} />
-                <Tooltip
-                  contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #374151', color: '#f3f4f6', fontSize: 12 }}
-                />
-                <Bar dataKey="profit_loss">
-                  {dailyPnL.map((entry, index) => (
-                    <Cell
-                      key={`cell-${index}`}
-                      fill={entry.profit_loss >= 0 ? '#10b981' : '#ef4444'}
-                    />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
+        <Card className="mt-6">
+          <CardHeader>
+            <CardTitle className="text-base md:text-lg">Daily P&L</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-48 md:h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={dailyPnL}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#333" />
+                  <XAxis dataKey="date" stroke="#9ca3af" fontSize={11} tickFormatter={(v) => v.slice(5)} />
+                  <YAxis stroke="#9ca3af" fontSize={11} />
+                  <Tooltip
+                    contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #374151', color: '#f3f4f6', fontSize: 12 }}
+                  />
+                  <Bar dataKey="profit_loss">
+                    {dailyPnL.map((entry, index) => (
+                      <Cell
+                        key={`cell-${index}`}
+                        fill={entry.profit_loss >= 0 ? '#10b981' : '#ef4444'}
+                      />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       {/* Cumulative P&L Chart */}
-       {dailyPnL.length > 0 && (
-        <div className="mt-6 rounded-lg border border-border bg-card p-3 md:p-4">
-          <h3 className="mb-3 md:mb-4 text-base md:text-lg font-semibold">Cumulative P&L</h3>
-          <div className="h-48 md:h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={computeCumulativePnL(dailyPnL)}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#333" />
-                <XAxis dataKey="date" stroke="#9ca3af" fontSize={11} tickFormatter={(v) => v.slice(5)} />
-                <YAxis stroke="#9ca3af" fontSize={11} />
-                <Tooltip
-                  contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #374151', color: '#f3f4f6', fontSize: 12 }}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="cumulative"
-                  stroke="#3b82f6"
-                  strokeWidth={2}
-                  dot={false}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
+      {dailyPnL.length > 0 && (
+        <Card className="mt-6">
+          <CardHeader>
+            <CardTitle className="text-base md:text-lg">Cumulative P&L</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-48 md:h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={computeCumulativePnL(dailyPnL)}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#333" />
+                  <XAxis dataKey="date" stroke="#9ca3af" fontSize={11} tickFormatter={(v) => v.slice(5)} />
+                  <YAxis stroke="#9ca3af" fontSize={11} />
+                  <Tooltip
+                    contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #374151', color: '#f3f4f6', fontSize: 12 }}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="cumulative"
+                    stroke="#3b82f6"
+                    strokeWidth={2}
+                    dot={false}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       {/* CLV Distribution Histogram */}
       {allPicks.some((p: any) => p.clv_percent !== null) && (
-        <div className="mt-6 rounded-lg border border-border bg-card p-3 md:p-4">
-          <h3 className="mb-3 md:mb-4 text-base md:text-lg font-semibold">CLV% Distribution</h3>
-          <div className="h-48 md:h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={computeClvHistogram(allPicks)}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#333" />
-                <XAxis dataKey="bucket" stroke="#9ca3af" fontSize={11} />
-                <YAxis stroke="#9ca3af" fontSize={11} />
-                <Tooltip
-                  contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #374151', color: '#f3f4f6', fontSize: 12 }}
-                />
-                <Bar dataKey="count">
-                  {computeClvHistogram(allPicks).map((entry, index) => (
-                    <Cell
-                      key={`cell-${index}`}
-                      fill={entry.bucket === '< 0%' ? '#ef4444' : '#10b981'}
-                    />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
+        <Card className="mt-6">
+          <CardHeader>
+            <CardTitle className="text-base md:text-lg">CLV% Distribution</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-48 md:h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={computeClvHistogram(allPicks)}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#333" />
+                  <XAxis dataKey="bucket" stroke="#9ca3af" fontSize={11} />
+                  <YAxis stroke="#9ca3af" fontSize={11} />
+                  <Tooltip
+                    contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #374151', color: '#f3f4f6', fontSize: 12 }}
+                  />
+                  <Bar dataKey="count">
+                    {computeClvHistogram(allPicks).map((entry, index) => (
+                      <Cell
+                        key={`cell-${index}`}
+                        fill={entry.bucket === '< 0%' ? '#ef4444' : '#10b981'}
+                      />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       {/* By Agent, By Market, By Competition */}
       <div className="mt-6 grid grid-cols-1 gap-6 md:grid-cols-3">
         {/* By Agent */}
         {byAgent.length > 0 && (
-          <div className="rounded-lg border border-border bg-card p-4">
-            <h3 className="mb-4 text-lg font-semibold">By Agent</h3>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-border">
-                    <th className="pb-2 text-left text-muted-foreground">Agent</th>
-                    <th className="pb-2 text-right text-muted-foreground">Picks</th>
-                    <th className="pb-2 text-right text-muted-foreground">Win Rate</th>
-                    <th className="pb-2 text-right text-muted-foreground">P/L</th>
-                    <th className="pb-2 text-right text-muted-foreground">CLV%</th>
-                  </tr>
-                </thead>
-                <tbody>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base md:text-lg">By Agent</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Agent</TableHead>
+                    <TableHead className="text-right">Picks</TableHead>
+                    <TableHead className="text-right">Win Rate</TableHead>
+                    <TableHead className="text-right">P/L</TableHead>
+                    <TableHead className="text-right">CLV%</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
                   {byAgent.map((a: any) => (
-                    <tr key={a.agent_id || 'manual'} className="border-b border-border/50">
-                      <td className="py-2">{a.agent_name}</td>
-                      <td className="py-2 text-right">{a.total_picks}</td>
-                      <td className="py-2 text-right">{a.win_rate}%</td>
-                      <td className={`py-2 text-right ${a.total_profit_loss >= 0 ? 'text-success' : 'text-destructive'}`}>
+                    <TableRow key={a.agent_id || 'manual'}>
+                      <TableCell>{a.agent_name}</TableCell>
+                      <TableCell className="text-right">{a.total_picks}</TableCell>
+                      <TableCell className="text-right">{a.win_rate}%</TableCell>
+                      <TableCell className={`text-right ${a.total_profit_loss >= 0 ? 'text-success' : 'text-destructive'}`}>
                         {a.total_profit_loss.toFixed(2)}
-                      </td>
-                      <td className="py-2 text-right">{a.avg_clv_percent !== null ? `${a.avg_clv_percent}%` : '-'}</td>
-                    </tr>
+                      </TableCell>
+                      <TableCell className="text-right">{a.avg_clv_percent !== null ? `${a.avg_clv_percent}%` : '-'}</TableCell>
+                    </TableRow>
                   ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
         )}
 
         {/* By Market */}
         {byMarket.length > 0 && (
-          <div className="rounded-lg border border-border bg-card p-4">
-            <h3 className="mb-4 text-lg font-semibold">By Market</h3>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-border">
-                    <th className="pb-2 text-left text-muted-foreground">Market</th>
-                    <th className="pb-2 text-right text-muted-foreground">Picks</th>
-                    <th className="pb-2 text-right text-muted-foreground">Win Rate</th>
-                    <th className="pb-2 text-right text-muted-foreground">P/L</th>
-                  </tr>
-                </thead>
-                <tbody>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base md:text-lg">By Market</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Market</TableHead>
+                    <TableHead className="text-right">Picks</TableHead>
+                    <TableHead className="text-right">Win Rate</TableHead>
+                    <TableHead className="text-right">P/L</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
                   {byMarket.map((m: any) => (
-                    <tr key={m.market} className="border-b border-border/50">
-                      <td className="py-2">{m.market}</td>
-                      <td className="py-2 text-right">{m.total_picks}</td>
-                      <td className="py-2 text-right">{m.win_rate}%</td>
-                      <td className={`py-2 text-right ${m.total_profit_loss >= 0 ? 'text-success' : 'text-destructive'}`}>
+                    <TableRow key={m.market}>
+                      <TableCell>{m.market}</TableCell>
+                      <TableCell className="text-right">{m.total_picks}</TableCell>
+                      <TableCell className="text-right">{m.win_rate}%</TableCell>
+                      <TableCell className={`text-right ${m.total_profit_loss >= 0 ? 'text-success' : 'text-destructive'}`}>
                         {m.total_profit_loss.toFixed(2)}
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
         )}
 
         {/* By Competition */}
         {byCompetition.length > 0 && (
-          <div className="rounded-lg border border-border bg-card p-4">
-            <h3 className="mb-4 text-lg font-semibold">By Competition</h3>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-border">
-                    <th className="pb-2 text-left text-muted-foreground">Competition</th>
-                    <th className="pb-2 text-right text-muted-foreground">Picks</th>
-                    <th className="pb-2 text-right text-muted-foreground">Win Rate</th>
-                    <th className="pb-2 text-right text-muted-foreground">P/L</th>
-                  </tr>
-                </thead>
-                <tbody>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base md:text-lg">By Competition</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Competition</TableHead>
+                    <TableHead className="text-right">Picks</TableHead>
+                    <TableHead className="text-right">Win Rate</TableHead>
+                    <TableHead className="text-right">P/L</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
                   {byCompetition.map((comp: any) => (
-                    <tr key={comp.competition || 'Unknown'} className="border-b border-border/50">
-                      <td className="py-2">{comp.competition || 'Unknown'}</td>
-                      <td className="py-2 text-right">{comp.total_picks}</td>
-                      <td className="py-2 text-right">{comp.win_rate}%</td>
-                      <td className={`py-2 text-right ${comp.total_profit_loss >= 0 ? 'text-success' : 'text-destructive'}`}>
+                    <TableRow key={comp.competition || 'Unknown'}>
+                      <TableCell>{comp.competition || 'Unknown'}</TableCell>
+                      <TableCell className="text-right">{comp.total_picks}</TableCell>
+                      <TableCell className="text-right">{comp.win_rate}%</TableCell>
+                      <TableCell className={`text-right ${comp.total_profit_loss >= 0 ? 'text-success' : 'text-destructive'}`}>
                         {comp.total_profit_loss.toFixed(2)}
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
         )}
       </div>
     </>
@@ -263,12 +287,14 @@ export function AnalyticsPage() {
 
 function StatCard({ label, value, positive }: { label: string; value: string | number; positive?: boolean }) {
   return (
-    <div className="rounded-lg border border-border bg-card p-4">
-      <div className="text-xs text-muted-foreground">{label}</div>
-      <div className={`mt-1 text-xl font-bold ${positive === true ? 'text-success' : positive === false ? 'text-destructive' : ''}`}>
-        {value}
-      </div>
-    </div>
+    <Card>
+      <CardContent className="pt-4">
+        <div className="text-xs text-muted-foreground">{label}</div>
+        <div className={`mt-1 text-xl font-bold ${positive === true ? 'text-success' : positive === false ? 'text-destructive' : ''}`}>
+          {value}
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
