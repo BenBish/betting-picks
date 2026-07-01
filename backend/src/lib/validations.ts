@@ -41,7 +41,14 @@ export const UpdatePickSchema = z.object({
   closing_odds: z.number().gt(1, 'closing_odds must be greater than 1').optional(),
   stake: z.number().min(0).optional(),
   notes: z.string().optional(),
-});
+}).refine(
+  (data) =>
+    !(data.home_team && data.away_team && data.home_team.toLowerCase() === data.away_team.toLowerCase()),
+  {
+    message: 'home_team and away_team cannot be the same',
+    path: ['away_team'],
+  }
+);
 
 export const ClosingLineSchema = z.object({
   closing_odds: z.number().gt(1, 'closing_odds must be greater than 1'),
