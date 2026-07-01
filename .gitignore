@@ -1,8 +1,10 @@
-.agents/
 .codex/
 .playwright-mcp/
 
 .DS_Store
+
+# Claude Code local settings (may contain tokens)
+.claude/settings.local.json
 
 # Node modules
 node_modules/
