@@ -45,14 +45,14 @@ gh pr view <number> --json number,title,url,state,isDraft,headRefName,baseRefNam
    - Keep suggestions actionable: commands to run locally, files likely involved, or owners/services to inspect.
 
 6. Merge only after the gate passes.
-   - Confirm the PR number, title, base branch, and merge strategy if the user has not already made it explicit.
-   - If the user has not specified a strategy, check recent merge convention with `git log --merges -5 --oneline` against the base branch. Match squash, merge, or rebase to what the repo already does; default to squash merge with branch deletion only when no clear convention exists.
+   - Confirm the PR number, title, and base branch if the user has not already made it explicit.
+   - Always squash merge with branch deletion unless the user explicitly requests a different strategy for this merge:
 
 ```bash
 gh pr merge <number> --squash --delete-branch
 ```
 
-   - If the user requests another strategy, use `--merge` or `--rebase`.
+   - If the user requests another strategy, use `--merge` or `--rebase`, but note that repo settings may only allow squash merges.
    - If GitHub reports checks are not passing or branch protection blocks the merge, stop and report the block.
 
 7. Clean up local state when appropriate.
@@ -73,6 +73,7 @@ git pull --ff-only
 - Do not bypass branch protection, use admin merge, disable checks, or force delete branches.
 - If `gh pr checks` says checks are pending, the correct action is to wait or report pending status, not merge.
 - If checks fail, investigation and next steps are the deliverable.
+- Squash merge is the standing convention for this repo (enforced in repo settings: merge commits and rebase merges are disabled). Do not infer strategy from git history; always squash unless the user explicitly overrides for one merge.
 
 ## Output
 
