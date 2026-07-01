@@ -60,11 +60,14 @@ git diff <base>...HEAD
    - End with one recommendation: `Approve`, `Approve with NITs`, `Comment`, or `Request changes`.
 
 6. Publish PR reviews to GitHub.
-   - For GitHub PR reviews, submit the local report to GitHub by default with `gh pr review <pr> --body-file <file>` and the action that matches the recommendation.
+   - Before choosing a review action, check whether this is a self-review: compare the PR author (`gh pr view <pr> --json author --jq .author.login`) to the authenticated `gh` user (`gh api user --jq .login`), and also treat it as a self-review if you created, committed to, or pushed this PR earlier in the current session.
+   - If it is a self-review, skip formal review actions entirely and post the full local report with `gh pr comment <pr> --body-file <file>`. Formal `gh pr review --approve`/`--request-changes`/`--comment` actions on your own PR are typically blocked (by GitHub itself or by harness self-approval safeguards) regardless of the recommendation, so do not attempt them first. State in the posted comment and in your response to the user that this is a self-review and was posted as a plain comment rather than a formal review.
+   - If the plain `gh pr comment` call is also denied (for example by a harness permission classifier), do not retry or work around it. Report the full local report directly to the user and explain that posting was blocked because you authored the PR.
+   - For non-self-reviews, submit the local report to GitHub by default with `gh pr review <pr> --body-file <file>` and the action that matches the recommendation.
    - Use `gh pr review <pr> --approve --body-file <file>` only when there are no critical issues, no recommended improvements that require discussion, and the recommendation is `Approve` or `Approve with NITs`.
    - Use `gh pr review <pr> --request-changes --body-file <file>` when critical issues are present and the recommendation is `Request changes`.
    - Use `gh pr review <pr> --comment --body-file <file>` when there are recommended improvements but no critical issues, or when the recommendation is `Comment`.
-   - If GitHub rejects the formal review action, such as when the PR author cannot request changes on their own PR, fall back to `gh pr comment <pr> --body-file <file>` with the same review body and mention the fallback reason.
+   - If GitHub rejects the formal review action for a non-self-review reason, fall back to `gh pr comment <pr> --body-file <file>` with the same review body and mention the fallback reason.
    - For branch-only reviews with no associated PR, keep the review local unless the user asks to post it somewhere.
    - If line-specific comments are requested, use GitHub-supported review comment mechanisms when available. Do not fabricate file positions; fall back to a summary review when exact positions cannot be resolved safely.
    - Never submit an approval when critical issues remain. Never submit request-changes for NITs alone.
@@ -102,6 +105,7 @@ Use this structure for both the local report and any GitHub review body unless t
 - Review PRs with `gh`; do not use the GitHub MCP for this workflow.
 - Always provide the local report even when also posting to GitHub.
 - For PR reviews, posting to GitHub is the default; use a normal PR comment as a fallback when GitHub disallows the formal review action.
+- Self-reviewing your own PR: always post as a plain `gh pr comment`, never attempt `gh pr review --approve`/`--request-changes`/`--comment`. If even the comment is blocked, stop and give the user the local report instead of retrying.
 - Treat security-sensitive changes as high scrutiny even when the diff is small.
 - A passing test suite does not prove correctness or security.
 - If CI is failing or pending, mention it in the recommendation context.
