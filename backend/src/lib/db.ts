@@ -1,13 +1,15 @@
-import { Database } from 'bun:sqlite';
-import path from 'path';
-import fs from 'fs';
+import { Database } from "bun:sqlite";
+import fs from "node:fs";
+import path from "node:path";
 
 let db: Database | null = null;
 
 export function getDb(): Database {
-  if (db) return db;
+  if (db) {
+    return db;
+  }
 
-  const dbPath = process.env.DB_PATH || './data/picks.db';
+  const dbPath = process.env.DB_PATH || "./data/picks.db";
   const resolvedPath = path.resolve(process.cwd(), dbPath);
   const dir = path.dirname(resolvedPath);
 
@@ -16,7 +18,7 @@ export function getDb(): Database {
   }
 
   db = new Database(resolvedPath);
-  db.exec('PRAGMA journal_mode = WAL');
+  db.exec("PRAGMA journal_mode = WAL");
 
   runMigrations(db);
 
@@ -39,21 +41,26 @@ function runMigrations(database: Database): void {
 
   // Get already applied migrations
   const applied = database
-    .prepare('SELECT name FROM schema_migrations ORDER BY name')
+    .prepare("SELECT name FROM schema_migrations ORDER BY name")
     .all() as { name: string }[];
 
   const appliedNames = new Set(applied.map((r) => r.name));
 
   // Find migration files
-  const migrationsDir = path.join(import.meta.dirname, '..', 'migrations');
-  const files = fs.readdirSync(migrationsDir).filter((f) => f.endsWith('.sql')).sort();
+  const migrationsDir = path.join(import.meta.dirname, "..", "migrations");
+  const files = fs
+    .readdirSync(migrationsDir)
+    .filter((f) => f.endsWith(".sql"))
+    .sort();
 
   for (const file of files) {
-    const name = file.replace('.sql', '');
+    const name = file.replace(".sql", "");
     if (!appliedNames.has(name)) {
-      const sql = fs.readFileSync(path.join(migrationsDir, file), 'utf8');
+      const sql = fs.readFileSync(path.join(migrationsDir, file), "utf8");
       database.exec(sql);
-      database.prepare('INSERT INTO schema_migrations (name) VALUES (?)').run(name);
+      database
+        .prepare("INSERT INTO schema_migrations (name) VALUES (?)")
+        .run(name);
       console.log(`Applied migration: ${name}`);
     }
   }

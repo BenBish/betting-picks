@@ -1,6 +1,5 @@
-import type { Context, Next } from 'hono';
-import { getAgentByKey } from '../lib/agent-service';
-import type { Agent } from '../lib/agent-service';
+import type { Context, Next } from "hono";
+import { getAgentByKey } from "../lib/agent-service";
 
 // Simple in-memory sliding window rate limiter
 const rateLimitStore = new Map<string, number[]>();
@@ -38,29 +37,29 @@ setInterval(() => {
   }
 }, 300_000); // Every 5 minutes
 
-export const agentAuthMiddleware = async (c: Context<any, string, {}>, next: Next) => {
-  const authHeader = c.req.raw.headers.get('Authorization');
+export const agentAuthMiddleware = async (c: Context, next: Next) => {
+  const authHeader = c.req.raw.headers.get("Authorization");
 
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return c.json({ error: 'Missing or invalid Authorization header' }, 401);
+  if (!authHeader?.startsWith("Bearer ")) {
+    return c.json({ error: "Missing or invalid Authorization header" }, 401);
   }
 
-  const key = authHeader.substring(7);
+  const key = authHeader.slice(7);
   const agent = getAgentByKey(key);
 
   if (!agent) {
-    return c.json({ error: 'Invalid agent key' }, 401);
+    return c.json({ error: "Invalid agent key" }, 401);
   }
 
   if (!agent.is_active) {
-    return c.json({ error: 'Agent is deactivated' }, 403);
+    return c.json({ error: "Agent is deactivated" }, 403);
   }
 
   // Rate limiting
   if (!checkRateLimit(agent.id)) {
-    return c.json({ error: 'Rate limit exceeded. Try again later.' }, 429);
+    return c.json({ error: "Rate limit exceeded. Try again later." }, 429);
   }
 
-  c.set('agent', agent);
+  c.set("agent", agent);
   await next();
 };

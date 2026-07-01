@@ -1,13 +1,13 @@
-import { getDb } from './db';
-import { sseEmitter } from './sse-emitter';
+import { getDb } from "./db";
+import { sseEmitter } from "./sse-emitter";
 
 export interface ActivityLog {
-  id: string;
-  created_at: string;
-  agent_id: string | null;
-  pick_id: string | null;
   action: string;
+  agent_id: string | null;
+  created_at: string;
   details: string | null;
+  id: string;
+  pick_id: string | null;
 }
 
 export function logActivity(
@@ -23,10 +23,17 @@ export function logActivity(
   db.prepare(`
     INSERT INTO activity_log (id, created_at, agent_id, pick_id, action, details)
     VALUES (?, ?, ?, ?, ?, ?)
-  `).run(id, created_at, agentId ?? null, pickId ?? null, action, details ?? null);
+  `).run(
+    id,
+    created_at,
+    agentId ?? null,
+    pickId ?? null,
+    action,
+    details ?? null
+  );
 
   // Broadcast via SSE
-  sseEmitter.emit('activity', {
+  sseEmitter.emit("activity", {
     id,
     created_at,
     agent_id: agentId,
@@ -46,19 +53,19 @@ export function getActivities(filters: {
   const limit = filters.limit ?? 50;
   const offset = filters.offset ?? 0;
 
-  let sql = 'SELECT * FROM activity_log WHERE 1=1';
+  let sql = "SELECT * FROM activity_log WHERE 1=1";
   const params: (string | number)[] = [];
 
   if (filters.agent_id) {
-    sql += ' AND agent_id = ?';
+    sql += " AND agent_id = ?";
     params.push(filters.agent_id);
   }
   if (filters.action) {
-    sql += ' AND action = ?';
+    sql += " AND action = ?";
     params.push(filters.action);
   }
 
-  sql += ' ORDER BY created_at DESC LIMIT ? OFFSET ?';
+  sql += " ORDER BY created_at DESC LIMIT ? OFFSET ?";
   params.push(limit, offset);
 
   const rows = db.prepare(sql).all(...params) as Record<string, unknown>[];

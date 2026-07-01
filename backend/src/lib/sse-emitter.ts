@@ -1,10 +1,10 @@
 export interface ActivityEvent {
-  id: string;
-  created_at: string;
-  agent_id: string | null;
-  pick_id: string | null;
   action: string;
+  agent_id: string | null;
+  created_at: string;
   details: string | null;
+  id: string;
+  pick_id: string | null;
 }
 
 // Simple in-memory SSE broadcaster
@@ -12,7 +12,7 @@ export interface ActivityEvent {
 type Client = (data: Uint8Array) => void;
 
 class SseEmitter {
-  private clients: Set<Client> = new Set();
+  private readonly clients: Set<Client> = new Set();
 
   subscribe(client: Client): () => void {
     this.clients.add(client);
