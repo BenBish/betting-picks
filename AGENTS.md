@@ -171,6 +171,11 @@ PORT=3000
 - **Batch response**: 207 Multi-Status with per-item status codes.
 - **Tests**: Use `bun test` in backend. Each test file creates a fresh temp SQLite DB.
 
+### Agent Skills & MCP Gotchas
+
+- **Skills source of truth**: `.agents/skills/<name>/` is canonical. `.claude/skills/<name>` mirrors it via committed symlinks — if `/mr`, `/issue`, etc. don't show up in Claude Code, check `git config core.symlinks` and whether the clone materialized real symlinks (some Windows/archive checkouts write the target path as plain text instead).
+- **Linear MCP**: `.mcp.json` reads the Linear server token from the `LINEAR_API_KEY` env var. Set it locally before using the `issue` or `work` skills; never commit a token.
+
 ### shadcn/ui Gotchas
 
 - **Tailwind v3**: Project uses Tailwind v3.4. Do NOT use Tailwind v4 syntax (`--spacing()`, CSS variable arbitrary values like `py-(--var)`).

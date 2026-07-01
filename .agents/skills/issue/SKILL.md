@@ -7,7 +7,7 @@ description: Create, update, and delete typed Linear issues through the Linear M
 
 Manage Linear issues through the Linear MCP server. Do not create or update GitHub issues for this workflow.
 
-Requires an authenticated Linear MCP server, preferably named `linear` and connected to `https://mcp.linear.app/mcp`. In this repo, `.mcp.json` should mirror the OpenCode Linear setup from `/home/ben/.config/opencode/opencode.json`, but use `LINEAR_API_KEY` instead of committing a token. Use the GitHub CLI (`gh`) for GitHub work; do not configure or use the GitHub MCP for this skill.
+Requires an authenticated Linear MCP server, preferably named `linear` and connected to `https://mcp.linear.app/mcp`. In this repo, `.mcp.json` configures this server using the `LINEAR_API_KEY` env var; set that variable locally rather than committing a token. Use the GitHub CLI (`gh`) for GitHub work; do not configure or use the GitHub MCP for this skill.
 
 ## Workflow
 

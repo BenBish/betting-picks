@@ -46,7 +46,7 @@ gh pr view <number> --json number,title,url,state,isDraft,headRefName,baseRefNam
 
 6. Merge only after the gate passes.
    - Confirm the PR number, title, base branch, and merge strategy if the user has not already made it explicit.
-   - Default to squash merge with branch deletion:
+   - If the user has not specified a strategy, check recent merge convention with `git log --merges -5 --oneline` against the base branch. Match squash, merge, or rebase to what the repo already does; default to squash merge with branch deletion only when no clear convention exists.
 
 ```bash
 gh pr merge <number> --squash --delete-branch
