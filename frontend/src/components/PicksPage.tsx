@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Link } from '@tanstack/react-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getPicks, createPick, deletePick, setResult, setClosingLine, unsetPick, getAgents, Pick, Agent } from '../lib/api';
+import { getPicks, createPick, updatePick, deletePick, setResult, setClosingLine, unsetPick, getAgents, Pick, Agent } from '../lib/api';
+import { toast } from 'sonner';
 import { ActivityFeed } from './ActivityFeed';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -48,7 +49,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Plus, X, Activity, MoreVertical, Trash2, ChevronDown, RotateCcw } from 'lucide-react';
+import { Plus, X, Activity, MoreVertical, Trash2, ChevronDown, RotateCcw, Pencil, Save } from 'lucide-react';
 
 export function PicksPage() {
   const queryClient = useQueryClient();
@@ -56,6 +57,7 @@ export function PicksPage() {
   const [showActivity, setShowActivity] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [unsetId, setUnsetId] = useState<string | null>(null);
+  const [editPick, setEditPick] = useState<Pick | null>(null);
   const [filters, setFilters] = useState({ unsettled_only: false, agent_id: '' as string });
 
   const { data: agents = [] } = useQuery({
@@ -103,6 +105,15 @@ export function PicksPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['picks'] });
       setUnsetId(null);
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: Partial<Pick> }) => updatePick(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['picks'] });
+      setEditPick(null);
+      toast.success('Pick updated');
     },
   });
 
@@ -191,6 +202,19 @@ export function PicksPage() {
                 <PickForm onSubmit={(data) => createMutation.mutate(data)} />
               </DialogContent>
             </Dialog>
+            <Dialog open={editPick !== null} onOpenChange={(open) => !open && setEditPick(null)}>
+              <DialogContent className="sm:max-w-3xl">
+                <DialogHeader>
+                  <DialogTitle>Edit Pick</DialogTitle>
+                </DialogHeader>
+                {editPick && (
+                  <PickForm
+                    pick={editPick}
+                    onSubmit={(data) => updateMutation.mutate({ id: editPick.id, data })}
+                  />
+                )}
+              </DialogContent>
+            </Dialog>
           </div>
         </div>
       </div>
@@ -217,6 +241,7 @@ export function PicksPage() {
                   agentHue={hue}
                   onDelete={() => setDeleteId(pick.id)}
                   onUnset={() => setUnsetId(pick.id)}
+                  onEdit={() => setEditPick(pick)}
                   onSettle={(result) => settleMutation.mutate({ id: pick.id, result })}
                   onSetClosingLine={(closing_odds) => closingLineMutation.mutate({ id: pick.id, closing_odds })}
                 />
@@ -255,6 +280,7 @@ export function PicksPage() {
                       agentHue={hue}
                       onDelete={() => setDeleteId(pick.id)}
                       onUnset={() => setUnsetId(pick.id)}
+                      onEdit={() => setEditPick(pick)}
                       onSettle={(result) => settleMutation.mutate({ id: pick.id, result })}
                       onSetClosingLine={(closing_odds) => closingLineMutation.mutate({ id: pick.id, closing_odds })}
                     />
@@ -338,18 +364,26 @@ export function PicksPage() {
   );
 }
 
-function PickForm({ onSubmit }: { onSubmit: (data: any) => void }) {
+function PickForm({ onSubmit, pick }: { onSubmit: (data: any) => void; pick?: Pick | null }) {
+  const isEdit = !!pick;
+
+  const formatDateForInput = (isoDate: string) => {
+    const d = new Date(isoDate);
+    const pad = (n: number) => n.toString().padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  };
+
   const [form, setForm] = useState({
-    match_date: '',
-    home_team: '',
-    away_team: '',
-    competition: '',
-    market: 'Moneyline',
-    selection: '',
-    recommended_odds: 2.0,
-    stake: 1,
-    notes: '',
-    source: '',
+    match_date: isEdit ? formatDateForInput(pick!.match_date) : '',
+    home_team: isEdit ? pick!.home_team : '',
+    away_team: isEdit ? pick!.away_team : '',
+    competition: isEdit ? (pick!.competition ?? '') : '',
+    market: isEdit ? pick!.market : 'Moneyline',
+    selection: isEdit ? pick!.selection : '',
+    recommended_odds: isEdit ? pick!.recommended_odds : 2.0,
+    stake: isEdit ? pick!.stake : 1,
+    notes: isEdit ? (pick!.notes ?? '') : '',
+    source: isEdit ? (pick!.source ?? '') : '',
   });
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -362,6 +396,11 @@ function PickForm({ onSubmit }: { onSubmit: (data: any) => void }) {
       onSubmit={handleSubmit}
       className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-6 gap-3"
     >
+      {isEdit && pick?.result && (
+        <div className="col-span-full rounded-md bg-yellow-50 border border-yellow-200 px-3 py-2 text-sm text-yellow-800">
+          This pick is settled ({pick.result}). Editing will not clear the result.
+        </div>
+      )}
       <div className="md:col-span-1 space-y-2">
         <Label>Match Date</Label>
         <Input
@@ -467,7 +506,12 @@ function PickForm({ onSubmit }: { onSubmit: (data: any) => void }) {
       </div>
       <div className="sm:col-span-4 md:col-span-2 flex items-end">
         <Button type="submit" className="w-full">
-          <Plus className="mr-1 size-4" /> Add Pick
+          {isEdit ? (
+            <Save className="mr-1 size-4" />
+          ) : (
+            <Plus className="mr-1 size-4" />
+          )}
+          {isEdit ? 'Save Changes' : 'Add Pick'}
         </Button>
       </div>
     </form>
@@ -491,6 +535,7 @@ function PickCard({
   agentHue,
   onDelete,
   onUnset,
+  onEdit,
   onSettle,
   onSetClosingLine,
 }: {
@@ -499,6 +544,7 @@ function PickCard({
   agentHue: number;
   onDelete: () => void;
   onUnset: () => void;
+  onEdit: () => void;
   onSettle: (result: string) => void;
   onSetClosingLine: (closing_odds: number) => void;
 }) {
@@ -643,6 +689,9 @@ function PickCard({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={onEdit}>
+                <Pencil className="size-4" /> Edit
+              </DropdownMenuItem>
               {pick.result && (
                 <DropdownMenuItem onClick={onUnset}>
                   <RotateCcw className="size-4" /> Unsettle
@@ -666,6 +715,7 @@ function PickRow({
   agentHue,
   onDelete,
   onUnset,
+  onEdit,
   onSettle,
   onSetClosingLine,
 }: {
@@ -674,6 +724,7 @@ function PickRow({
   agentHue: number;
   onDelete: () => void;
   onUnset: () => void;
+  onEdit: () => void;
   onSettle: (result: string) => void;
   onSetClosingLine: (closing_odds: number) => void;
 }) {
@@ -802,6 +853,9 @@ function PickRow({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={onEdit}>
+                <Pencil className="size-4" /> Edit
+              </DropdownMenuItem>
               {pick.result && (
                 <DropdownMenuItem onClick={onUnset}>
                   <RotateCcw className="size-4" /> Unsettle
