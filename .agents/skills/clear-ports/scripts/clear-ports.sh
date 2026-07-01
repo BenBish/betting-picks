@@ -114,7 +114,7 @@ command_for_pid() {
 
 all_processes() {
   if has_cmd ps; then
-    ps -eo pid=,command= 2>/dev/null || true
+    ps -eo pid=,command= -u "$(id -u)" 2>/dev/null || true
   else
     echo "error: ps is required to match command patterns" >&2
     exit 3
