@@ -345,6 +345,36 @@ export function settleResult(
   return updated;
 }
 
+export function unsettlePick(
+  id: string,
+  updatedBy: string
+): PickWithClv | null {
+  const db = getDb();
+  const existing = getPickById(id);
+  if (!existing) return null;
+
+  // Must be in a settled state
+  if (!existing.result) return null;
+
+  // Clear result and P&L, preserve closing_odds (historical data)
+  db.prepare(`
+    UPDATE picks SET result = NULL, profit_loss = 0, updated_by = ?,
+      updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE id = ?
+  `).run(updatedBy, id);
+
+  const updated = getPickById(id);
+  if (updated) {
+    logActivity(
+      updated.agent_id,
+      updated.id,
+      'pick.unsettled',
+      `${updated.home_team} vs ${updated.away_team} — unsettled by ${updatedBy}`
+    );
+  }
+
+  return updated;
+}
+
 export function deletePick(id: string): boolean {
   const db = getDb();
   const existing = getPickById(id);
