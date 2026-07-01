@@ -26,11 +26,17 @@ Ask a follow-up question before continuing when:
    - Fetch the issue by key, including title, description, status, labels, project, assignee, links, and acceptance criteria if present.
    - Stop if the issue does not exist, is canceled/closed/done, or cannot be fetched.
 
-2. Read project guidance.
+2. Mark the issue as started.
+   - If the issue's current status type is `backlog` or `unstarted`, move it to the team's `started`-type status (e.g. "In Progress") via the Linear MCP update tool. Pass the status type rather than a hardcoded name so this works across teams with different state names.
+   - Never move a status backward: leave issues that are already `started` (or further along) untouched.
+   - If the issue has no assignee, assign it to the current Linear user (`assignee: "me"`). If it already has an assignee, leave it as-is unless the user explicitly asks to reassign.
+   - Note the resulting status and assignee for the final output.
+
+3. Read project guidance.
    - Read `AGENTS.md` and other relevant local guidance before planning.
    - Note repo commands, testing expectations, branch naming conventions, and gotchas.
 
-3. Determine the default branch.
+4. Determine the default branch.
    - Prefer the remote default branch:
 
 ```bash
@@ -40,17 +46,17 @@ git remote show origin
    - Fall back to `main` if the repo clearly uses `main`.
    - Ask before using a guessed default branch when unclear.
 
-4. Create a safe branch name.
+5. Create a safe branch name.
    - Build a slug from the Linear title: lowercase, hyphenated, short, ASCII where practical.
-   - Use this format:
+   - Use this format, keeping the issue key's case as Linear returns it — never a username or initials prefix:
 
 ```text
-<user-or-initials>/<linear-key-lowercase>-<slug>
+<linear-key>-<slug>
 ```
 
-   - If no user prefix convention is known, ask whether to use a prefix or default to `<linear-key-lowercase>-<slug>`.
+   Example: `BET-9-add-ultracite`.
 
-5. Create an isolated worktree from the default branch.
+6. Create an isolated worktree from the default branch.
    - Fetch and update the default branch:
 
 ```bash
@@ -72,13 +78,13 @@ git pull --ff-only origin <default-branch>
 git worktree add ../<repo-name>-<linear-key-lowercase> -b <branch-name> <default-branch>
 ```
 
-6. Build the implementation plan in the new worktree.
+7. Build the implementation plan in the new worktree.
    - Explore relevant files from inside the worktree.
    - Identify likely code changes, tests, docs, migrations, config, and risks.
    - Map each plan item back to Linear context and acceptance criteria.
    - Ask follow-up questions when requirements are ambiguous or acceptance criteria are missing.
 
-7. Stop for approval before implementation.
+8. Stop for approval before implementation.
    - Present the Linear issue summary, branch name, worktree path, plan, risks, and open questions.
    - Do not edit code until the user approves the plan.
 
@@ -89,6 +95,8 @@ git worktree add ../<repo-name>-<linear-key-lowercase> -b <branch-name> <default
 - Do not branch from the current feature branch; branch from the default branch.
 - Do not overwrite an existing worktree or branch without confirmation.
 - If Linear context is thin, ask follow-up questions before planning broad implementation work.
+- Branch names never include a username or initials prefix — use `<linear-key>-<slug>` only.
+- Do not move an issue's status backward, and do not overwrite an existing assignee without explicit confirmation.
 
 ## Output
 
@@ -101,7 +109,8 @@ Worktree: <path>
 Base: <default-branch>
 
 Issue context
-- Status: <status>
+- Status: <new status> (was <previous status>, if changed)
+- Assignee: <name>
 - Project/labels: <project/labels>
 - Acceptance criteria: <summary or missing>
 
