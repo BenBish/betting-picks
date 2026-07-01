@@ -102,6 +102,14 @@ export function updateAgent(id: string, data: { name?: string; is_active?: boole
   values.push(id);
   db.prepare(sql).run(...values);
 
+  const oldName = existing.name as string;
+  if (data.name !== undefined && data.name !== oldName) {
+    logActivity(id, null, 'agent.renamed', `Agent renamed from "${oldName}" to "${data.name}"`);
+  } else if (data.is_active !== undefined && data.is_active !== (existing.is_active as number === 1)) {
+    const status = data.is_active ? 'activated' : 'deactivated';
+    logActivity(id, null, `agent.${status}`, `Agent "${oldName}" ${status}`);
+  }
+
   return getAgentById(id);
 }
 

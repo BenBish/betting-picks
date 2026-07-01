@@ -29,7 +29,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Plus, X, Copy, Key, RotateCw, Trash2, MoreVertical, Power, PowerOff } from 'lucide-react';
+import { Plus, X, Copy, Key, RotateCw, Trash2, MoreVertical, Power, PowerOff, Pencil } from 'lucide-react';
 
 export function AgentsPage() {
   const queryClient = useQueryClient();
@@ -38,6 +38,8 @@ export function AgentsPage() {
   const [pendingKeys, setPendingKeys] = useState<Record<string, string>>({});
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [editId, setEditId] = useState<string | null>(null);
+  const [editName, setEditName] = useState('');
 
   const { data: agents = [], isLoading } = useQuery({
     queryKey: ['agents'],
@@ -75,6 +77,15 @@ export function AgentsPage() {
     },
   });
 
+  const renameMutation = useMutation({
+    mutationFn: ({ id, name }: { id: string; name: string }) => updateAgent(id, { name }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['agents'] });
+      setEditId(null);
+      setEditName('');
+    },
+  });
+
   const handleCopyKey = (agentId: string, key: string) => {
     navigator.clipboard.writeText(key);
     setCopiedId(agentId);
@@ -98,6 +109,18 @@ export function AgentsPage() {
 
   const handleDelete = (id: string) => () => {
     deleteMutation.mutate(id);
+  };
+
+  const handleEditOpen = (agentId: string, currentName: string) => () => {
+    setEditId(agentId);
+    setEditName(currentName);
+  };
+
+  const handleRename = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (editId && editName.trim()) {
+      renameMutation.mutate({ id: editId, name: editName.trim() });
+    }
   };
 
   const agentToDelete = agents.find((a) => a.id === deleteId);
@@ -157,6 +180,7 @@ export function AgentsPage() {
               onDismissKey={handleDismissKey}
               onToggle={() => toggleMutation.mutate({ id: agent.id, is_active: !agent.is_active })}
               onRotate={() => rotateMutation.mutate(agent.id)}
+              onEdit={handleEditOpen(agent.id, agent.name)}
               onDelete={() => setDeleteId(agent.id)}
             />
           ))}
@@ -182,6 +206,34 @@ export function AgentsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Edit agent dialog */}
+      <Dialog open={editId !== null} onOpenChange={(open) => !open && setEditId(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Agent</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleRename} className="flex flex-col gap-3">
+            <Input
+              type="text"
+              required
+              placeholder="Agent name"
+              value={editName}
+              onChange={(e) => setEditName(e.target.value)}
+              autoFocus
+              className="flex-1"
+            />
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="outline" onClick={() => setEditId(null)}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={renameMutation.isPending}>
+                {renameMutation.isPending ? 'Saving...' : 'Save'}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
@@ -194,6 +246,7 @@ function AgentCard({
   onDismissKey,
   onToggle,
   onRotate,
+  onEdit,
   onDelete,
 }: {
   agent: any;
@@ -203,6 +256,7 @@ function AgentCard({
   onDismissKey: (id: string) => void;
   onToggle: () => void;
   onRotate: () => void;
+  onEdit: () => void;
   onDelete: () => void;
 }) {
   return (
@@ -276,6 +330,9 @@ function AgentCard({
               </DropdownMenuItem>
               <DropdownMenuItem onClick={onRotate}>
                 <RotateCw className="mr-2 size-4" /> Rotate Key
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={onEdit}>
+                <Pencil className="mr-2 size-4" /> Edit
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={onDelete}>
