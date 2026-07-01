@@ -153,6 +153,16 @@ export async function setResult(id: string, result: string): Promise<Pick> {
   return data.pick;
 }
 
+export async function unsetPick(id: string): Promise<Pick> {
+  const res = await fetch(`${API_BASE}/admin/picks/${id}/unsettle`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+  });
+  const data = await res.json();
+  return data.pick;
+}
+
 export async function deletePick(id: string): Promise<void> {
   await fetch(`${API_BASE}/admin/picks/${id}`, {
     method: 'DELETE',

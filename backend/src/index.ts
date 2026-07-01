@@ -241,6 +241,13 @@ picksRoutes.put('/:id/result', async (c) => {
   return c.json({ pick });
 });
 
+picksRoutes.put('/:id/unsettle', async (c) => {
+  const user = getUser(c);
+  const pick = picksService.unsettlePick(c.req.param('id'), user);
+  if (!pick) return c.json({ error: 'Pick not found or not settled' }, 404);
+  return c.json({ pick });
+});
+
 picksRoutes.delete('/:id', (c) => {
   const success = picksService.deletePick(c.req.param('id'));
   if (!success) return c.json({ error: 'Pick not found' }, 404);

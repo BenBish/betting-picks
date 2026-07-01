@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from '@tanstack/react-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getPicks, createPick, deletePick, setResult, setClosingLine, getAgents, Pick, Agent } from '../lib/api';
+import { getPicks, createPick, deletePick, setResult, setClosingLine, unsetPick, getAgents, Pick, Agent } from '../lib/api';
 import { ActivityFeed } from './ActivityFeed';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -48,13 +48,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Plus, X, Activity, MoreVertical, Trash2, ChevronDown } from 'lucide-react';
+import { Plus, X, Activity, MoreVertical, Trash2, ChevronDown, RotateCcw } from 'lucide-react';
 
 export function PicksPage() {
   const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
   const [showActivity, setShowActivity] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [unsetId, setUnsetId] = useState<string | null>(null);
   const [filters, setFilters] = useState({ unsettled_only: false, agent_id: '' as string });
 
   const { data: agents = [] } = useQuery({
@@ -97,6 +98,14 @@ export function PicksPage() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['picks'] }),
   });
 
+  const unsetMutation = useMutation({
+    mutationFn: (id: string) => unsetPick(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['picks'] });
+      setUnsetId(null);
+    },
+  });
+
   const getAgentName = (agentId: string | null, createdBy: string): string => {
     if (!agentId) return createdBy || '-';
     const agent = agents.find((a) => a.id === agentId);
@@ -125,7 +134,13 @@ export function PicksPage() {
     setDeleteId(null);
   };
 
+  const handleUnset = (id: string) => () => {
+    unsetMutation.mutate(id);
+    setUnsetId(null);
+  };
+
   const pickToDelete = picks.find((p) => p.id === deleteId);
+  const pickToUnset = picks.find((p) => p.id === unsetId);
 
   return (
     <>
@@ -201,6 +216,7 @@ export function PicksPage() {
                   agentName={agentName}
                   agentHue={hue}
                   onDelete={() => setDeleteId(pick.id)}
+                  onUnset={() => setUnsetId(pick.id)}
                   onSettle={(result) => settleMutation.mutate({ id: pick.id, result })}
                   onSetClosingLine={(closing_odds) => closingLineMutation.mutate({ id: pick.id, closing_odds })}
                 />
@@ -238,6 +254,7 @@ export function PicksPage() {
                       agentName={agentName}
                       agentHue={hue}
                       onDelete={() => setDeleteId(pick.id)}
+                      onUnset={() => setUnsetId(pick.id)}
                       onSettle={(result) => settleMutation.mutate({ id: pick.id, result })}
                       onSetClosingLine={(closing_odds) => closingLineMutation.mutate({ id: pick.id, closing_odds })}
                     />
@@ -293,6 +310,26 @@ export function PicksPage() {
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction variant="destructive" onClick={handleDelete(deleteId ?? '')}>
               Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Unsettle confirmation dialog */}
+      <AlertDialog open={unsetId !== null} onOpenChange={(open) => !open && setUnsetId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Unsettle Pick</AlertDialogTitle>
+            <AlertDialogDescription>
+              {pickToUnset
+                ? `Unsettle "${pickToUnset.home_team} vs ${pickToUnset.away_team}"? This will clear the result and P&L.`
+                : 'Are you sure you want to unsettle this pick?'}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleUnset(unsetId ?? '')}>
+              Unsettle
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -453,6 +490,7 @@ function PickCard({
   agentName,
   agentHue,
   onDelete,
+  onUnset,
   onSettle,
   onSetClosingLine,
 }: {
@@ -460,6 +498,7 @@ function PickCard({
   agentName: string;
   agentHue: number;
   onDelete: () => void;
+  onUnset: () => void;
   onSettle: (result: string) => void;
   onSetClosingLine: (closing_odds: number) => void;
 }) {
@@ -604,6 +643,11 @@ function PickCard({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
+              {pick.result && (
+                <DropdownMenuItem onClick={onUnset}>
+                  <RotateCcw className="size-4" /> Unsettle
+                </DropdownMenuItem>
+              )}
               <DropdownMenuItem onClick={onDelete}>
                 <Trash2 className="size-4" /> Delete
               </DropdownMenuItem>
@@ -621,6 +665,7 @@ function PickRow({
   agentName,
   agentHue,
   onDelete,
+  onUnset,
   onSettle,
   onSetClosingLine,
 }: {
@@ -628,6 +673,7 @@ function PickRow({
   agentName: string;
   agentHue: number;
   onDelete: () => void;
+  onUnset: () => void;
   onSettle: (result: string) => void;
   onSetClosingLine: (closing_odds: number) => void;
 }) {
@@ -756,6 +802,11 @@ function PickRow({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
+              {pick.result && (
+                <DropdownMenuItem onClick={onUnset}>
+                  <RotateCcw className="size-4" /> Unsettle
+                </DropdownMenuItem>
+              )}
               <DropdownMenuItem onClick={onDelete}>
                 <Trash2 className="size-4" /> Delete
               </DropdownMenuItem>
