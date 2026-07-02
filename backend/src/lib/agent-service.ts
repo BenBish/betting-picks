@@ -19,7 +19,7 @@ function generateAgentKey(): string {
 
 function hashKey(key: string): string {
   // Use scrypt for key hashing
-  const salt = "betting-picks-salt-v1";
+  const salt = "better-bet-salt-v1";
   const hash = scryptSync(key, salt, 64);
   return hash.toString("hex");
 }

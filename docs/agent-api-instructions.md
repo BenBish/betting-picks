@@ -1,6 +1,6 @@
 # Agent API Instructions
 
-How an external agent (AI betting analyst, script, etc.) stores picks into the Soccer Picks Tracker.
+How an external agent (AI betting analyst, script, etc.) stores picks into Better Bet.
 
 ## Base URL
 

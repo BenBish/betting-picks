@@ -3,7 +3,7 @@ import type { Context, Next } from "hono";
 
 // Simple scrypt-based password hash for admin password
 export function hashPassword(password: string): string {
-  const salt = "betting-picks-admin-salt-v1";
+  const salt = "better-bet-admin-salt-v1";
   return scryptSync(password, salt, 32).toString("hex");
 }
 

@@ -18,7 +18,7 @@ describe("picks-service", () => {
 
   beforeAll(() => {
     originalDbPath = process.env.DB_PATH;
-    const tempPath = `/tmp/betting-picks-picks-test-${randomUUID()}.db`;
+    const tempPath = `/tmp/better-bet-picks-test-${randomUUID()}.db`;
     process.env.DB_PATH = tempPath;
 
     const { Database } = require("bun:sqlite");

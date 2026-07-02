@@ -74,7 +74,7 @@ frontend/src/
 
 ## Commands
 
-All commands run from root `/home/ben/Dev/betting-picks-mvp/`:
+All commands run from root `/home/ben/Dev/better-bet/`:
 
 ```
 bun run dev              # Both backend (3000) + frontend (5173) via concurrently
