@@ -156,7 +156,10 @@ jobs:
       - name: Check lint and formatting
         run: bun run check
 
-      - name: Typecheck and build
+      - name: Typecheck
+        run: bun run typecheck
+
+      - name: Build
         run: bun run build
 
       - name: Secret scan

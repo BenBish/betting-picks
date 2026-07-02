@@ -14,7 +14,8 @@
     "start:frontend": "cd frontend && bun run preview",
     "clean": "rm -f backend/data/picks.db backend/data/picks.db-wal backend/data/picks.db-shm",
     "check": "ultracite check",
-    "fix": "ultracite fix"
+    "fix": "ultracite fix",
+    "typecheck": "cd backend && bun run build && cd ../frontend && bun run typecheck"
   },
   "version": "0.1.0",
   "workspaces": [

@@ -170,6 +170,9 @@ export async function createPick(
     | "clv_percent"
     | "agent_id"
     | "raw_agent_payload"
+    | "closing_odds"
+    | "result"
+    | "profit_loss"
   >
 ): Promise<Pick> {
   const res = await fetch(`${API_BASE}/admin/picks`, {
