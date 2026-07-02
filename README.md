@@ -1,4 +1,4 @@
-# Betting Picks Tracker
+# Better Bet
 
 Sports betting picks management system with agent API, real-time activity feed, and analytics dashboard.
 

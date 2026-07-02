@@ -1,10 +1,11 @@
 {
-  "devDependencies": {
-    "@biomejs/biome": "2.4.16",
-    "concurrently": "^9.0.0",
-    "ultracite": "7.8.3"
-  },
-  "name": "betting-picks-mvp",
+  "name": "better-bet",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "backend",
+    "frontend"
+  ],
   "scripts": {
     "dev": "bun run --bun ./node_modules/.bin/concurrently -n backend,frontend -c blue,green \"cd backend && bun run dev\" \"cd frontend && bun run dev\"",
     "dev:backend": "cd backend && bun run dev",
@@ -17,10 +18,9 @@
     "fix": "ultracite fix",
     "typecheck": "cd backend && bun run build && cd ../frontend && bun run typecheck"
   },
-  "version": "0.1.0",
-  "workspaces": [
-    "backend",
-    "frontend"
-  ],
-  "private": true
+  "devDependencies": {
+    "@biomejs/biome": "2.4.16",
+    "concurrently": "^9.0.0",
+    "ultracite": "7.8.3"
+  }
 }

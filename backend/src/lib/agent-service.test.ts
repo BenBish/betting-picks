@@ -19,7 +19,7 @@ describe("agent-service", () => {
 
   beforeAll(() => {
     originalDbPath = process.env.DB_PATH;
-    const tempPath = `/tmp/betting-picks-agent-test-${randomUUID()}.db`;
+    const tempPath = `/tmp/better-bet-agent-test-${randomUUID()}.db`;
     process.env.DB_PATH = tempPath;
 
     // Create a fresh DB
