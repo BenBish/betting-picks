@@ -1,17 +1,16 @@
-import { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getAgents, createAgent, updateAgent, deleteAgent, rotateAgentKey } from '../lib/api';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
-import { Card, CardContent } from '@/components/ui/card';
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
+  Copy,
+  Key,
+  MoreVertical,
+  Pencil,
+  Plus,
+  Power,
+  PowerOff,
+  RotateCw,
+  Trash2,
+} from "lucide-react";
+import { type FormEvent, type ReactNode, useState } from "react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -21,28 +20,46 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
+} from "@/components/ui/alert-dialog";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { Plus, X, Copy, Key, RotateCw, Trash2, MoreVertical, Power, PowerOff, Pencil } from 'lucide-react';
+} from "@/components/ui/dropdown-menu";
+import { Input } from "@/components/ui/input";
+import {
+  type Agent,
+  createAgent,
+  deleteAgent,
+  getAgents,
+  rotateAgentKey,
+  updateAgent,
+} from "../lib/api";
 
 export function AgentsPage() {
   const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
-  const [newName, setNewName] = useState('');
+  const [newName, setNewName] = useState("");
   const [pendingKeys, setPendingKeys] = useState<Record<string, string>>({});
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [editId, setEditId] = useState<string | null>(null);
-  const [editName, setEditName] = useState('');
+  const [editName, setEditName] = useState("");
 
   const { data: agents = [], isLoading } = useQuery({
-    queryKey: ['agents'],
+    queryKey: ["agents"],
     queryFn: () => getAgents(),
   });
 
@@ -50,21 +67,22 @@ export function AgentsPage() {
     mutationFn: (name: string) => createAgent(name),
     onSuccess: (data) => {
       setPendingKeys((prev) => ({ ...prev, [data.agent.id]: data.key }));
-      queryClient.invalidateQueries({ queryKey: ['agents'] });
+      queryClient.invalidateQueries({ queryKey: ["agents"] });
       setShowForm(false);
-      setNewName('');
+      setNewName("");
     },
   });
 
   const toggleMutation = useMutation({
-    mutationFn: ({ id, is_active }: { id: string; is_active: boolean }) => updateAgent(id, { is_active }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['agents'] }),
+    mutationFn: ({ id, is_active }: { id: string; is_active: boolean }) =>
+      updateAgent(id, { is_active }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["agents"] }),
   });
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => deleteAgent(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['agents'] });
+      queryClient.invalidateQueries({ queryKey: ["agents"] });
       setDeleteId(null);
     },
   });
@@ -73,16 +91,17 @@ export function AgentsPage() {
     mutationFn: (id: string) => rotateAgentKey(id),
     onSuccess: (key, agentId) => {
       setPendingKeys((prev) => ({ ...prev, [agentId]: key }));
-      queryClient.invalidateQueries({ queryKey: ['agents'] });
+      queryClient.invalidateQueries({ queryKey: ["agents"] });
     },
   });
 
   const renameMutation = useMutation({
-    mutationFn: ({ id, name }: { id: string; name: string }) => updateAgent(id, { name }),
+    mutationFn: ({ id, name }: { id: string; name: string }) =>
+      updateAgent(id, { name }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['agents'] });
+      queryClient.invalidateQueries({ queryKey: ["agents"] });
       setEditId(null);
-      setEditName('');
+      setEditName("");
     },
   });
 
@@ -100,7 +119,7 @@ export function AgentsPage() {
     });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     if (newName.trim()) {
       createMutation.mutate(newName.trim());
@@ -116,7 +135,7 @@ export function AgentsPage() {
     setEditName(currentName);
   };
 
-  const handleRename = (e: React.FormEvent) => {
+  const handleRename = (e: FormEvent) => {
     e.preventDefault();
     if (editId && editName.trim()) {
       renameMutation.mutate({ id: editId, name: editName.trim() });
@@ -124,12 +143,48 @@ export function AgentsPage() {
   };
 
   const agentToDelete = agents.find((a) => a.id === deleteId);
+  let agentsContent: ReactNode;
+  if (isLoading) {
+    agentsContent = (
+      <div className="mt-6 text-muted-foreground">Loading agents...</div>
+    );
+  } else if (agents.length === 0) {
+    agentsContent = (
+      <div className="mt-6 rounded-lg border bg-card p-8 text-center text-muted-foreground">
+        No agents yet. Create your first agent above.
+      </div>
+    );
+  } else {
+    agentsContent = (
+      <div className="mt-6 grid gap-4 md:grid-cols-2">
+        {agents.map((agent) => (
+          <AgentCard
+            agent={agent}
+            copiedId={copiedId}
+            key={agent.id}
+            onCopyKey={handleCopyKey}
+            onDelete={() => setDeleteId(agent.id)}
+            onDismissKey={handleDismissKey}
+            onEdit={handleEditOpen(agent.id, agent.name)}
+            onRotate={() => rotateMutation.mutate(agent.id)}
+            onToggle={() =>
+              toggleMutation.mutate({
+                id: agent.id,
+                is_active: !agent.is_active,
+              })
+            }
+            pendingKey={pendingKeys[agent.id]}
+          />
+        ))}
+      </div>
+    );
+  }
 
   return (
     <>
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold">Agents</h2>
-        <Dialog open={showForm} onOpenChange={setShowForm}>
+        <h2 className="font-bold text-2xl">Agents</h2>
+        <Dialog onOpenChange={setShowForm} open={showForm}>
           <DialogTrigger asChild>
             <Button size="sm">
               <Plus className="mr-1 size-4" /> New Agent
@@ -139,22 +194,26 @@ export function AgentsPage() {
             <DialogHeader>
               <DialogTitle>Create Agent</DialogTitle>
             </DialogHeader>
-            <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+            <form className="flex flex-col gap-3" onSubmit={handleSubmit}>
               <Input
-                type="text"
-                required
-                placeholder="Agent name"
-                value={newName}
-                onChange={(e) => setNewName(e.target.value)}
                 autoFocus
                 className="flex-1"
+                onChange={(e) => setNewName(e.target.value)}
+                placeholder="Agent name"
+                required
+                type="text"
+                value={newName}
               />
               <div className="flex justify-end gap-2">
-                <Button type="button" variant="outline" onClick={() => setShowForm(false)}>
+                <Button
+                  onClick={() => setShowForm(false)}
+                  type="button"
+                  variant="outline"
+                >
                   Cancel
                 </Button>
-                <Button type="submit" disabled={createMutation.isPending}>
-                  {createMutation.isPending ? 'Creating...' : 'Create'}
+                <Button disabled={createMutation.isPending} type="submit">
+                  {createMutation.isPending ? "Creating..." : "Create"}
                 </Button>
               </div>
             </form>
@@ -162,45 +221,28 @@ export function AgentsPage() {
         </Dialog>
       </div>
 
-      {isLoading ? (
-        <div className="mt-6 text-muted-foreground">Loading agents...</div>
-      ) : agents.length === 0 ? (
-        <div className="mt-6 rounded-lg border bg-card p-8 text-center text-muted-foreground">
-          No agents yet. Create your first agent above.
-        </div>
-      ) : (
-        <div className="mt-6 grid gap-4 md:grid-cols-2">
-          {agents.map((agent) => (
-            <AgentCard
-              key={agent.id}
-              agent={agent}
-              pendingKey={pendingKeys[agent.id]}
-              copiedId={copiedId}
-              onCopyKey={handleCopyKey}
-              onDismissKey={handleDismissKey}
-              onToggle={() => toggleMutation.mutate({ id: agent.id, is_active: !agent.is_active })}
-              onRotate={() => rotateMutation.mutate(agent.id)}
-              onEdit={handleEditOpen(agent.id, agent.name)}
-              onDelete={() => setDeleteId(agent.id)}
-            />
-          ))}
-        </div>
-      )}
+      {agentsContent}
 
       {/* Delete confirmation dialog */}
-      <AlertDialog open={deleteId !== null} onOpenChange={(open) => !open && setDeleteId(null)}>
+      <AlertDialog
+        onOpenChange={(open) => !open && setDeleteId(null)}
+        open={deleteId !== null}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Agent</AlertDialogTitle>
             <AlertDialogDescription>
               {agentToDelete
                 ? `Delete agent "${agentToDelete.name}"? This cannot be undone.`
-                : 'Are you sure you want to delete this agent?'}
+                : "Are you sure you want to delete this agent?"}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction variant="destructive" onClick={handleDelete(deleteId ?? '')}>
+            <AlertDialogAction
+              onClick={handleDelete(deleteId ?? "")}
+              variant="destructive"
+            >
               Delete
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -208,27 +250,34 @@ export function AgentsPage() {
       </AlertDialog>
 
       {/* Edit agent dialog */}
-      <Dialog open={editId !== null} onOpenChange={(open) => !open && setEditId(null)}>
+      <Dialog
+        onOpenChange={(open) => !open && setEditId(null)}
+        open={editId !== null}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Edit Agent</DialogTitle>
           </DialogHeader>
-          <form onSubmit={handleRename} className="flex flex-col gap-3">
+          <form className="flex flex-col gap-3" onSubmit={handleRename}>
             <Input
-              type="text"
-              required
-              placeholder="Agent name"
-              value={editName}
-              onChange={(e) => setEditName(e.target.value)}
               autoFocus
               className="flex-1"
+              onChange={(e) => setEditName(e.target.value)}
+              placeholder="Agent name"
+              required
+              type="text"
+              value={editName}
             />
             <div className="flex justify-end gap-2">
-              <Button type="button" variant="outline" onClick={() => setEditId(null)}>
+              <Button
+                onClick={() => setEditId(null)}
+                type="button"
+                variant="outline"
+              >
                 Cancel
               </Button>
-              <Button type="submit" disabled={renameMutation.isPending}>
-                {renameMutation.isPending ? 'Saving...' : 'Save'}
+              <Button disabled={renameMutation.isPending} type="submit">
+                {renameMutation.isPending ? "Saving..." : "Save"}
               </Button>
             </div>
           </form>
@@ -249,7 +298,7 @@ function AgentCard({
   onEdit,
   onDelete,
 }: {
-  agent: any;
+  agent: Agent;
   pendingKey?: string;
   copiedId: string | null;
   onCopyKey: (id: string, key: string) => void;
@@ -260,10 +309,10 @@ function AgentCard({
   onDelete: () => void;
 }) {
   return (
-    <Card className={agent.is_active ? '' : 'opacity-60'}>
+    <Card className={agent.is_active ? "" : "opacity-60"}>
       <CardContent className="pt-1">
         <div className="flex items-start justify-between gap-3">
-          <div className="flex-1 min-w-0">
+          <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
               <h3 className="font-semibold">{agent.name}</h3>
               <StatusBadge active={agent.is_active} />
@@ -271,44 +320,47 @@ function AgentCard({
 
             {pendingKey ? (
               <div className="mt-2">
-                <p className="text-xs text-muted-foreground">
+                <p className="text-muted-foreground text-xs">
                   New API Key (copy now — shown once):
                 </p>
                 <div className="mt-1 flex items-center gap-2">
-                  <code className="flex-1 rounded bg-muted px-2 py-1 font-mono text-xs break-all select-all">
+                  <code className="flex-1 select-all break-all rounded bg-muted px-2 py-1 font-mono text-xs">
                     {pendingKey}
                   </code>
                   <Button
-                    variant="secondary"
-                    size="sm"
                     onClick={() => onCopyKey(agent.id, pendingKey)}
+                    size="sm"
+                    variant="secondary"
                   >
                     <Copy className="mr-1 size-3" />
-                    {copiedId === agent.id ? 'Copied!' : 'Copy'}
+                    {copiedId === agent.id ? "Copied!" : "Copy"}
                   </Button>
                 </div>
                 <Button
-                  variant="ghost"
-                  size="sm"
-                  className="mt-1 h-auto p-0 text-xs text-muted-foreground hover:text-foreground"
+                  className="mt-1 h-auto p-0 text-muted-foreground text-xs hover:text-foreground"
                   onClick={() => onDismissKey(agent.id)}
+                  size="sm"
+                  variant="ghost"
                 >
                   Dismiss
                 </Button>
               </div>
             ) : (
-              <div className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
+              <div className="mt-1 flex items-center gap-1 text-muted-foreground text-xs">
                 <Key className="size-3" />
-                <code className="rounded bg-muted px-1">{agent.key_prefix}...</code>
+                <code className="rounded bg-muted px-1">
+                  {agent.key_prefix}...
+                </code>
               </div>
             )}
 
-            <p className="mt-1 text-xs text-muted-foreground">
+            <p className="mt-1 text-muted-foreground text-xs">
               Created: {new Date(agent.created_at).toLocaleDateString()}
               {agent.last_active_at && (
                 <span>
-                  {' '}
-                  | Last active: {new Date(agent.last_active_at).toLocaleDateString()}
+                  {" "}
+                  | Last active:{" "}
+                  {new Date(agent.last_active_at).toLocaleDateString()}
                 </span>
               )}
             </p>
@@ -316,16 +368,20 @@ function AgentCard({
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon-sm">
+              <Button size="icon-sm" variant="ghost">
                 <MoreVertical className="size-4" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem onClick={onToggle}>
                 {agent.is_active ? (
-                  <><PowerOff className="mr-2 size-4" /> Deactivate</>
+                  <>
+                    <PowerOff className="mr-2 size-4" /> Deactivate
+                  </>
                 ) : (
-                  <><Power className="mr-2 size-4" /> Activate</>
+                  <>
+                    <Power className="mr-2 size-4" /> Activate
+                  </>
                 )}
               </DropdownMenuItem>
               <DropdownMenuItem onClick={onRotate}>
@@ -348,13 +404,13 @@ function AgentCard({
 
 function StatusBadge({ active }: { active: boolean }) {
   return (
-    <Badge variant={active ? 'default' : 'secondary'} className="gap-1.5">
+    <Badge className="gap-1.5" variant={active ? "default" : "secondary"}>
       <span
         className={`h-1.5 w-1.5 rounded-full ${
-          active ? 'bg-emerald-400' : 'bg-muted-foreground'
+          active ? "bg-emerald-400" : "bg-muted-foreground"
         }`}
       />
-      {active ? 'Active' : 'Inactive'}
+      {active ? "Active" : "Inactive"}
     </Badge>
   );
 }

@@ -1,19 +1,29 @@
-import { describe, it, expect, beforeAll, afterAll } from 'bun:test';
-import * as crypto from 'crypto';
-import * as agentService from './agent-service';
-import { getDb } from './db';
+import { afterAll, beforeAll, describe, expect, it } from "bun:test";
+import { randomUUID } from "node:crypto";
+import {
+  createAgent,
+  deleteAgent,
+  getAgentById,
+  getAgentByKey,
+  getAgentByName,
+  getAllAgents,
+  rotateAgentKey,
+  updateAgent,
+} from "./agent-service";
+
+const AGENT_KEY_PATTERN = /^spk_[0-9a-f]+$/;
 
 // Each test run creates a fresh temp DB
-describe('agent-service', () => {
+describe("agent-service", () => {
   let originalDbPath: string | undefined;
 
   beforeAll(() => {
     originalDbPath = process.env.DB_PATH;
-    const tempPath = `/tmp/betting-picks-agent-test-${crypto.randomUUID()}.db`;
+    const tempPath = `/tmp/betting-picks-agent-test-${randomUUID()}.db`;
     process.env.DB_PATH = tempPath;
 
     // Create a fresh DB
-    const { Database } = require('bun:sqlite');
+    const { Database } = require("bun:sqlite");
     const db = new Database(tempPath);
     db.exec(`
       CREATE TABLE IF NOT EXISTS agents (
@@ -40,89 +50,94 @@ describe('agent-service', () => {
     process.env.DB_PATH = originalDbPath;
   });
 
-  it('creates an agent with a key', () => {
-    const { agent, key } = agentService.createAgent('TestAgent');
+  it("creates an agent with a key", () => {
+    const { agent, key } = createAgent("TestAgent");
     expect(agent.id).toBeTruthy();
-    expect(agent.name).toBe('TestAgent');
+    expect(agent.name).toBe("TestAgent");
     expect(agent.is_active).toBe(true);
-    expect(key).toMatch(/^spk_[0-9a-f]+$/);
+    expect(key).toMatch(AGENT_KEY_PATTERN);
   });
 
-  it('retrieves agent by name', () => {
-    const agent = agentService.getAgentByName('TestAgent');
+  it("retrieves agent by name", () => {
+    const agent = getAgentByName("TestAgent");
     expect(agent).toBeTruthy();
-    expect(agent!.name).toBe('TestAgent');
+    expect(agent?.name).toBe("TestAgent");
   });
 
-  it('retrieves agent by key', () => {
-    const { key } = agentService.createAgent('KeyAgent');
-    const agent = agentService.getAgentByKey(key);
+  it("retrieves agent by key", () => {
+    const { key } = createAgent("KeyAgent");
+    const agent = getAgentByKey(key);
     expect(agent).toBeTruthy();
-    expect(agent!.name).toBe('KeyAgent');
+    expect(agent?.name).toBe("KeyAgent");
   });
 
-  it('returns null for non-existent agent', () => {
-    expect(agentService.getAgentByName('NonExistent')).toBeNull();
-    expect(agentService.getAgentByKey('spk_invalid')).toBeNull();
+  it("returns null for non-existent agent", () => {
+    expect(getAgentByName("NonExistent")).toBeNull();
+    expect(getAgentByKey("spk_invalid")).toBeNull();
   });
 
-  it('lists all active agents', () => {
-    const agents = agentService.getAllAgents();
+  it("lists all active agents", () => {
+    const agents = getAllAgents();
     expect(agents.length).toBeGreaterThanOrEqual(2);
     const names = agents.map((a) => a.name);
-    expect(names).toContain('TestAgent');
-    expect(names).toContain('KeyAgent');
+    expect(names).toContain("TestAgent");
+    expect(names).toContain("KeyAgent");
   });
 
-  it('updates agent name', () => {
-    const { agent } = agentService.createAgent('RenameMe');
-    const updated = agentService.updateAgent(agent.id, { name: 'RenamedAgent' });
+  it("updates agent name", () => {
+    const { agent } = createAgent("RenameMe");
+    const updated = updateAgent(agent.id, {
+      name: "RenamedAgent",
+    });
     expect(updated).toBeTruthy();
-    expect(updated!.name).toBe('RenamedAgent');
+    expect(updated?.name).toBe("RenamedAgent");
   });
 
-  it('updates agent is_active', () => {
-    const { agent } = agentService.createAgent('ToggleAgent');
-    const updated = agentService.updateAgent(agent.id, { is_active: false });
+  it("updates agent is_active", () => {
+    const { agent } = createAgent("ToggleAgent");
+    const updated = updateAgent(agent.id, { is_active: false });
     expect(updated).toBeTruthy();
-    expect(updated!.is_active).toBe(false);
+    expect(updated?.is_active).toBe(false);
   });
 
-  it('rotates agent key', () => {
-    const { agent, key } = agentService.createAgent('RotateAgent');
-    const newKey = agentService.rotateAgentKey(agent.id);
+  it("rotates agent key", () => {
+    const { agent, key } = createAgent("RotateAgent");
+    const newKey = rotateAgentKey(agent.id);
     expect(newKey).toBeTruthy();
     expect(newKey).not.toBe(key);
-    expect(newKey).toMatch(/^spk_[0-9a-f]+$/);
+    expect(newKey).toMatch(AGENT_KEY_PATTERN);
 
     // Old key should not work
-    expect(agentService.getAgentByKey(key)).toBeNull();
+    expect(getAgentByKey(key)).toBeNull();
 
     // New key should work
-    const resolved = agentService.getAgentByKey(newKey!);
+    if (!newKey) {
+      throw new Error("Expected rotated key");
+    }
+    const resolved = getAgentByKey(newKey);
     expect(resolved).toBeTruthy();
-    expect(resolved!.name).toBe('RotateAgent');
+    expect(resolved?.name).toBe("RotateAgent");
   });
 
-  it('soft-deletes agent (deactivates)', () => {
-    const { agent } = agentService.createAgent('DeleteAgent');
-    const success = agentService.deleteAgent(agent.id);
+  it("soft-deletes agent (deactivates)", () => {
+    const { agent } = createAgent("DeleteAgent");
+    const success = deleteAgent(agent.id);
     expect(success).toBe(true);
 
     // Should not appear in active list
-    const activeAgents = agentService.getAllAgents();
+    const activeAgents = getAllAgents();
     expect(activeAgents.find((a) => a.id === agent.id)).toBeUndefined();
 
     // Should still exist in DB (soft delete)
-    const stillExists = agentService.getAgentById(agent.id);
+    const stillExists = getAgentById(agent.id);
     expect(stillExists).toBeTruthy();
-    expect(stillExists!.is_active).toBe(false);
+    expect(stillExists?.is_active).toBe(false);
   });
 
-  it('returns null for non-existent agent operations', () => {
-    const fakeId = crypto.randomUUID();
-    expect(agentService.updateAgent(fakeId, { name: 'Test' })).toBeNull();
-    expect(agentService.rotateAgentKey(fakeId)).toBeNull();
-    expect(agentService.deleteAgent(fakeId)).toBe(false);
+  it("returns null for non-existent agent operations", () => {
+    const fakeId = randomUUID();
+    expect(updateAgent(fakeId, { name: "Test" })).toBeNull();
+    expect(rotateAgentKey(fakeId)).toBeNull();
+    expect(deleteAgent(fakeId)).toBe(false);
   });
 });

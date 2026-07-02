@@ -1,11 +1,10 @@
 {
+  "devDependencies": {
+    "@biomejs/biome": "2.4.16",
+    "concurrently": "^9.0.0",
+    "ultracite": "7.8.3"
+  },
   "name": "betting-picks-mvp",
-  "version": "0.1.0",
-  "private": true,
-  "workspaces": [
-    "backend",
-    "frontend"
-  ],
   "scripts": {
     "dev": "bun run --bun ./node_modules/.bin/concurrently -n backend,frontend -c blue,green \"cd backend && bun run dev\" \"cd frontend && bun run dev\"",
     "dev:backend": "cd backend && bun run dev",
@@ -13,9 +12,15 @@
     "build": "bun --filter backend build && bun --filter frontend build",
     "start:backend": "cd backend && bun run start",
     "start:frontend": "cd frontend && bun run preview",
-    "clean": "rm -f backend/data/picks.db backend/data/picks.db-wal backend/data/picks.db-shm"
+    "clean": "rm -f backend/data/picks.db backend/data/picks.db-wal backend/data/picks.db-shm",
+    "check": "ultracite check",
+    "fix": "ultracite fix",
+    "typecheck": "cd backend && bun run build && cd ../frontend && bun run typecheck"
   },
-  "devDependencies": {
-    "concurrently": "^9.0.0"
-  }
+  "version": "0.1.0",
+  "workspaces": [
+    "backend",
+    "frontend"
+  ],
+  "private": true
 }

@@ -1,59 +1,60 @@
-import { getDb } from './db';
+import { getDb } from "./db";
 
 export interface AnalyticsResult {
-  total_picks: number;
-  settled_picks: number;
-  won_picks: number;
+  avg_clv_percent: number | null;
   lost_picks: number;
+  picks_with_clv: number;
   push_picks: number;
+  roi: number;
+  settled_picks: number;
+  total_picks: number;
+  total_profit_loss: number;
+  total_stake: number;
   void_picks: number;
   win_rate: number;
-  total_stake: number;
-  total_profit_loss: number;
-  roi: number;
-  avg_clv_percent: number | null;
-  picks_with_clv: number;
+  won_picks: number;
 }
 
 export interface AnalyticsByAgent {
   agent_id: string | null;
   agent_name: string;
-  total_picks: number;
-  settled_picks: number;
-  won_picks: number;
-  win_rate: number;
-  total_profit_loss: number;
   avg_clv_percent: number | null;
+  settled_picks: number;
+  total_picks: number;
+  total_profit_loss: number;
+  win_rate: number;
+  won_picks: number;
 }
 
 export interface AnalyticsByMarket {
   market: string;
-  total_picks: number;
   settled_picks: number;
-  won_picks: number;
-  win_rate: number;
+  total_picks: number;
   total_profit_loss: number;
+  win_rate: number;
+  won_picks: number;
 }
 
 export interface AnalyticsByCompetition {
   competition: string;
-  total_picks: number;
   settled_picks: number;
-  won_picks: number;
-  win_rate: number;
+  total_picks: number;
   total_profit_loss: number;
+  win_rate: number;
+  won_picks: number;
 }
 
 export interface DailyPnlPoint {
   date: string;
-  profit_loss: number;
   picks_count: number;
+  profit_loss: number;
 }
 
 export function getAnalytics(): AnalyticsResult {
   const db = getDb();
 
-  const stats = db.prepare(`
+  const stats = db
+    .prepare(`
     SELECT
       COUNT(*) as total_picks,
       COUNT(CASE WHEN result IS NOT NULL THEN 1 END) as settled_picks,
@@ -65,7 +66,8 @@ export function getAnalytics(): AnalyticsResult {
       COALESCE(SUM(profit_loss), 0) as total_profit_loss,
       COUNT(CASE WHEN closing_odds IS NOT NULL THEN 1 END) as picks_with_clv
     FROM picks
-  `).get() as Record<string, unknown>;
+  `)
+    .get() as Record<string, unknown>;
 
   const totalPicks = Number(stats.total_picks);
   const settledPicks = Number(stats.settled_picks);
@@ -79,12 +81,14 @@ export function getAnalytics(): AnalyticsResult {
 
   let avgClvPercent: number | null = null;
   if (picksWithClv > 0) {
-    const clvStats = db.prepare(`
+    const clvStats = db
+      .prepare(`
       SELECT AVG((recommended_odds / closing_odds - 1) * 100) as avg_clv
       FROM picks
       WHERE closing_odds IS NOT NULL AND closing_odds > 1
-    `).get() as Record<string, unknown>;
-    avgClvPercent = clvStats.avg_clv !== null ? Number(clvStats.avg_clv) : null;
+    `)
+      .get() as Record<string, unknown>;
+    avgClvPercent = clvStats.avg_clv === null ? null : Number(clvStats.avg_clv);
   }
 
   return {
@@ -98,7 +102,8 @@ export function getAnalytics(): AnalyticsResult {
     total_stake: totalStake,
     total_profit_loss: totalProfitLoss,
     roi: Math.round(roi * 100) / 100,
-    avg_clv_percent: avgClvPercent !== null ? Math.round(avgClvPercent * 100) / 100 : null,
+    avg_clv_percent:
+      avgClvPercent === null ? null : Math.round(avgClvPercent * 100) / 100,
     picks_with_clv: picksWithClv,
   };
 }
@@ -106,7 +111,8 @@ export function getAnalytics(): AnalyticsResult {
 export function getAnalyticsByAgent(): AnalyticsByAgent[] {
   const db = getDb();
 
-  const rows = db.prepare(`
+  const rows = db
+    .prepare(`
     SELECT
       p.agent_id,
       COALESCE(a.name, p.created_by) as agent_name,
@@ -118,7 +124,8 @@ export function getAnalyticsByAgent(): AnalyticsByAgent[] {
     LEFT JOIN agents a ON p.agent_id = a.id
     GROUP BY p.agent_id, COALESCE(a.name, p.created_by)
     ORDER BY total_profit_loss DESC
-  `).all() as Record<string, unknown>[];
+  `)
+    .all() as Record<string, unknown>[];
 
   return rows.map((row) => {
     const settledPicks = Number(row.settled_picks);
@@ -129,19 +136,25 @@ export function getAnalyticsByAgent(): AnalyticsByAgent[] {
     let avgClvPercent: number | null = null;
 
     if (agentId) {
-      const clvStats = db.prepare(`
+      const clvStats = db
+        .prepare(`
         SELECT AVG((recommended_odds / closing_odds - 1) * 100) as avg_clv
         FROM picks
         WHERE agent_id = ? AND closing_odds IS NOT NULL AND closing_odds > 1
-      `).get(agentId) as Record<string, unknown>;
-      avgClvPercent = clvStats.avg_clv !== null ? Number(clvStats.avg_clv) : null;
+      `)
+        .get(agentId) as Record<string, unknown>;
+      avgClvPercent =
+        clvStats.avg_clv === null ? null : Number(clvStats.avg_clv);
     } else {
-      const clvStats = db.prepare(`
+      const clvStats = db
+        .prepare(`
         SELECT AVG((recommended_odds / closing_odds - 1) * 100) as avg_clv
         FROM picks
         WHERE agent_id IS NULL AND closing_odds IS NOT NULL AND closing_odds > 1
-      `).get() as Record<string, unknown>;
-      avgClvPercent = clvStats.avg_clv !== null ? Number(clvStats.avg_clv) : null;
+      `)
+        .get() as Record<string, unknown>;
+      avgClvPercent =
+        clvStats.avg_clv === null ? null : Number(clvStats.avg_clv);
     }
 
     return {
@@ -152,7 +165,8 @@ export function getAnalyticsByAgent(): AnalyticsByAgent[] {
       won_picks: wonPicks,
       win_rate: Math.round(winRate * 100) / 100,
       total_profit_loss: Number(row.total_profit_loss),
-      avg_clv_percent: avgClvPercent !== null ? Math.round(avgClvPercent * 100) / 100 : null,
+      avg_clv_percent:
+        avgClvPercent === null ? null : Math.round(avgClvPercent * 100) / 100,
     };
   });
 }
@@ -160,7 +174,8 @@ export function getAnalyticsByAgent(): AnalyticsByAgent[] {
 export function getAnalyticsByMarket(): AnalyticsByMarket[] {
   const db = getDb();
 
-  const rows = db.prepare(`
+  const rows = db
+    .prepare(`
     SELECT
       market,
       COUNT(*) as total_picks,
@@ -170,7 +185,8 @@ export function getAnalyticsByMarket(): AnalyticsByMarket[] {
     FROM picks
     GROUP BY market
     ORDER BY total_picks DESC
-  `).all() as Record<string, unknown>[];
+  `)
+    .all() as Record<string, unknown>[];
 
   return rows.map((row) => {
     const settledPicks = Number(row.settled_picks);
@@ -180,7 +196,10 @@ export function getAnalyticsByMarket(): AnalyticsByMarket[] {
       total_picks: Number(row.total_picks),
       settled_picks: settledPicks,
       won_picks: wonPicks,
-      win_rate: settledPicks > 0 ? Math.round((wonPicks / settledPicks) * 10000) / 100 : 0,
+      win_rate:
+        settledPicks > 0
+          ? Math.round((wonPicks / settledPicks) * 10_000) / 100
+          : 0,
       total_profit_loss: Number(row.total_profit_loss),
     };
   });
@@ -189,7 +208,8 @@ export function getAnalyticsByMarket(): AnalyticsByMarket[] {
 export function getAnalyticsByCompetition(): AnalyticsByCompetition[] {
   const db = getDb();
 
-  const rows = db.prepare(`
+  const rows = db
+    .prepare(`
     SELECT
       COALESCE(competition, 'Unknown') as competition,
       COUNT(*) as total_picks,
@@ -199,7 +219,8 @@ export function getAnalyticsByCompetition(): AnalyticsByCompetition[] {
     FROM picks
     GROUP BY COALESCE(competition, 'Unknown')
     ORDER BY total_picks DESC
-  `).all() as Record<string, unknown>[];
+  `)
+    .all() as Record<string, unknown>[];
 
   return rows.map((row) => {
     const settledPicks = Number(row.settled_picks);
@@ -209,7 +230,10 @@ export function getAnalyticsByCompetition(): AnalyticsByCompetition[] {
       total_picks: Number(row.total_picks),
       settled_picks: settledPicks,
       won_picks: wonPicks,
-      win_rate: settledPicks > 0 ? Math.round((wonPicks / settledPicks) * 10000) / 100 : 0,
+      win_rate:
+        settledPicks > 0
+          ? Math.round((wonPicks / settledPicks) * 10_000) / 100
+          : 0,
       total_profit_loss: Number(row.total_profit_loss),
     };
   });
@@ -218,7 +242,8 @@ export function getAnalyticsByCompetition(): AnalyticsByCompetition[] {
 export function getDailyPnL(): DailyPnlPoint[] {
   const db = getDb();
 
-  const rows = db.prepare(`
+  const rows = db
+    .prepare(`
     SELECT
       DATE(match_date) as date,
       COALESCE(SUM(profit_loss), 0) as profit_loss,
@@ -227,7 +252,8 @@ export function getDailyPnL(): DailyPnlPoint[] {
     WHERE result IS NOT NULL
     GROUP BY DATE(match_date)
     ORDER BY date ASC
-  `).all() as Record<string, unknown>[];
+  `)
+    .all() as Record<string, unknown>[];
 
   return rows.map((row) => ({
     date: row.date as string,

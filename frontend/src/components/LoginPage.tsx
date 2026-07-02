@@ -1,33 +1,33 @@
-import { useState } from 'react';
-import { useRouter } from '@tanstack/react-router';
-import { login } from '../lib/api';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { AlertCircle } from 'lucide-react';
+import { useRouter } from "@tanstack/react-router";
+import { AlertCircle } from "lucide-react";
+import { useState } from "react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { login } from "../lib/api";
 
 export function LoginPage() {
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setError('');
+    setError("");
 
     try {
       const success = await login(password);
       if (success) {
-        await router.navigate({ to: '/' });
+        await router.navigate({ to: "/" });
       } else {
-        setError('Invalid password');
+        setError("Invalid password");
       }
     } catch {
-      setError('Login failed');
+      setError("Login failed");
     } finally {
       setLoading(false);
     }
@@ -42,16 +42,16 @@ export function LoginPage() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form className="space-y-4" onSubmit={handleSubmit}>
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
               <Input
+                autoFocus
                 id="password"
-                type="password"
-                value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Enter password"
-                autoFocus
+                type="password"
+                value={password}
               />
             </div>
             {error && (
@@ -60,8 +60,8 @@ export function LoginPage() {
                 <AlertDescription>{error}</AlertDescription>
               </Alert>
             )}
-            <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? 'Logging in...' : 'Login'}
+            <Button className="w-full" disabled={loading} type="submit">
+              {loading ? "Logging in..." : "Login"}
             </Button>
           </form>
         </CardContent>

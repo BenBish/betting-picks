@@ -1,28 +1,28 @@
-import { getDb } from './db';
-import { calculateClvPercent, calculateProfitLoss } from './calculations';
-import { logActivity } from './activity-service';
+import { logActivity } from "./activity-service";
+import { calculateClvPercent, calculateProfitLoss } from "./calculations";
+import { getDb } from "./db";
 
 export interface PickRow {
-  id: string;
-  created_at: string;
-  updated_at: string;
-  created_by: string;
-  updated_by: string | null;
-  source: string | null;
-  match_date: string;
-  competition: string | null;
-  home_team: string;
-  away_team: string;
-  market: string;
-  selection: string;
-  recommended_odds: number;
-  closing_odds: number | null;
-  stake: number;
-  result: string | null;
-  profit_loss: number | null;
-  notes: string | null;
-  raw_agent_payload: string | null;
   agent_id: string | null;
+  away_team: string;
+  closing_odds: number | null;
+  competition: string | null;
+  created_at: string;
+  created_by: string;
+  home_team: string;
+  id: string;
+  market: string;
+  match_date: string;
+  notes: string | null;
+  profit_loss: number | null;
+  raw_agent_payload: string | null;
+  recommended_odds: number;
+  result: string | null;
+  selection: string;
+  source: string | null;
+  stake: number;
+  updated_at: string;
+  updated_by: string | null;
 }
 
 export interface PickWithClv extends PickRow {
@@ -47,24 +47,31 @@ function rowToPick(row: Record<string, unknown>): PickWithClv {
     closing_odds: row.closing_odds ? Number(row.closing_odds) : null,
     stake: Number(row.stake),
     result: row.result as string | null,
-    profit_loss: row.profit_loss !== null && row.profit_loss !== undefined
-      ? Number(row.profit_loss)
-      : null,
+    profit_loss:
+      row.profit_loss !== null && row.profit_loss !== undefined
+        ? Number(row.profit_loss)
+        : null,
     notes: row.notes as string | null,
     raw_agent_payload: row.raw_agent_payload as string | null,
     agent_id: row.agent_id as string | null,
   };
 
   const clvPercent =
-    pick.closing_odds !== null
-      ? calculateClvPercent(pick.recommended_odds, pick.closing_odds)
-      : null;
+    pick.closing_odds === null
+      ? null
+      : calculateClvPercent(pick.recommended_odds, pick.closing_odds);
 
   return { ...pick, clv_percent: clvPercent };
 }
 
-function recalculateProfitLoss(result: string | null, stake: number, recommendedOdds: number): number | null {
-  if (!result) return null;
+function recalculateProfitLoss(
+  result: string | null,
+  stake: number,
+  recommendedOdds: number
+): number | null {
+  if (!result) {
+    return null;
+  }
   return calculateProfitLoss(result, stake, recommendedOdds);
 }
 
@@ -113,18 +120,18 @@ export function createPick(data: {
     data.result ?? null,
     profit_loss,
     data.notes ?? null,
-    data.created_by ?? 'user',
+    data.created_by ?? "user",
     data.raw_agent_payload ?? null,
     data.agent_id ?? null
   );
 
   // Fetch by rowid for reliable retrieval (no race condition with concurrent inserts)
   const row = db
-    .prepare('SELECT * FROM picks WHERE rowid = ?')
+    .prepare("SELECT * FROM picks WHERE rowid = ?")
     .get(insertResult.lastInsertRowid) as Record<string, unknown>;
 
   if (!row) {
-    throw new Error('Failed to retrieve inserted pick');
+    throw new Error("Failed to retrieve inserted pick");
   }
 
   const pick = rowToPick(row);
@@ -132,7 +139,7 @@ export function createPick(data: {
   logActivity(
     data.agent_id ?? null,
     pick.id,
-    'pick.created',
+    "pick.created",
     `${pick.home_team} vs ${pick.away_team} — ${pick.selection} @ ${pick.recommended_odds}`
   );
 
@@ -141,11 +148,13 @@ export function createPick(data: {
 
 export function getPickById(id: string): PickWithClv | null {
   const db = getDb();
-  const row = db
-    .prepare('SELECT * FROM picks WHERE id = ?')
-    .get(id) as Record<string, unknown> | undefined;
+  const row = db.prepare("SELECT * FROM picks WHERE id = ?").get(id) as
+    | Record<string, unknown>
+    | undefined;
 
-  if (!row) return null;
+  if (!row) {
+    return null;
+  }
   return rowToPick(row);
 }
 
@@ -160,47 +169,45 @@ export function getAllPicks(filters: {
   agent_id?: string;
 }): PickWithClv[] {
   const db = getDb();
-  let sql = 'SELECT * FROM picks WHERE 1=1';
+  let sql = "SELECT * FROM picks WHERE 1=1";
   const params: (string | number)[] = [];
 
   if (filters.source) {
-    sql += ' AND LOWER(source) = LOWER(?)';
+    sql += " AND LOWER(source) = LOWER(?)";
     params.push(filters.source);
   }
   if (filters.competition) {
-    sql += ' AND LOWER(competition) = LOWER(?)';
+    sql += " AND LOWER(competition) = LOWER(?)";
     params.push(filters.competition);
   }
   if (filters.result) {
-    sql += ' AND result = ?';
+    sql += " AND result = ?";
     params.push(filters.result);
   }
   if (filters.unsettled_only) {
-    sql += ' AND result IS NULL';
+    sql += " AND result IS NULL";
   }
   if (filters.team) {
     const teamLower = filters.team.toLowerCase();
-    sql += ' AND (LOWER(home_team) LIKE ? OR LOWER(away_team) LIKE ?)';
+    sql += " AND (LOWER(home_team) LIKE ? OR LOWER(away_team) LIKE ?)";
     params.push(`%${teamLower}%`, `%${teamLower}%`);
   }
   if (filters.date_from) {
-    sql += ' AND match_date >= ?';
+    sql += " AND match_date >= ?";
     params.push(filters.date_from);
   }
   if (filters.date_to) {
-    sql += ' AND match_date <= ?';
+    sql += " AND match_date <= ?";
     params.push(filters.date_to);
   }
   if (filters.agent_id) {
-    sql += ' AND agent_id = ?';
+    sql += " AND agent_id = ?";
     params.push(filters.agent_id);
   }
 
-  sql += ' ORDER BY match_date DESC';
+  sql += " ORDER BY match_date DESC";
 
-  const rows = db
-    .prepare(sql)
-    .all(...params) as Record<string, unknown>[];
+  const rows = db.prepare(sql).all(...params) as Record<string, unknown>[];
 
   return rows.map(rowToPick);
 }
@@ -224,7 +231,9 @@ export function updatePick(
 ): PickWithClv | null {
   const db = getDb();
   const existing = getPickById(id);
-  if (!existing) return null;
+  if (!existing) {
+    return null;
+  }
 
   const fields: string[] = [];
   const values: (string | number | null)[] = [];
@@ -236,32 +245,43 @@ export function updatePick(
     }
   };
 
-  upsert('source', data.source);
-  upsert('match_date', data.match_date);
-  upsert('competition', data.competition);
-  upsert('home_team', data.home_team);
-  upsert('away_team', data.away_team);
-  upsert('market', data.market);
-  upsert('selection', data.selection);
-  upsert('recommended_odds', data.recommended_odds);
-  upsert('closing_odds', data.closing_odds === undefined ? undefined : (data.closing_odds ?? null));
-  upsert('stake', data.stake);
-  upsert('notes', data.notes);
+  upsert("source", data.source);
+  upsert("match_date", data.match_date);
+  upsert("competition", data.competition);
+  upsert("home_team", data.home_team);
+  upsert("away_team", data.away_team);
+  upsert("market", data.market);
+  upsert("selection", data.selection);
+  upsert("recommended_odds", data.recommended_odds);
+  upsert(
+    "closing_odds",
+    data.closing_odds === undefined ? undefined : (data.closing_odds ?? null)
+  );
+  upsert("stake", data.stake);
+  upsert("notes", data.notes);
 
   // Recalculate profit_loss if result exists and relevant fields changed
-  if (existing.result && (data.recommended_odds !== undefined || data.stake !== undefined)) {
+  if (
+    existing.result &&
+    (data.recommended_odds !== undefined || data.stake !== undefined)
+  ) {
     const newOdds = data.recommended_odds ?? existing.recommended_odds;
     const newStake = data.stake ?? existing.stake;
-    upsert('profit_loss', recalculateProfitLoss(existing.result, newStake, newOdds));
+    upsert(
+      "profit_loss",
+      recalculateProfitLoss(existing.result, newStake, newOdds)
+    );
   }
 
-  if (fields.length === 0) return existing;
+  if (fields.length === 0) {
+    return existing;
+  }
 
   values.push(updatedBy);
-  fields.push('updated_by = ?');
+  fields.push("updated_by = ?");
   fields.push("updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')");
 
-  const sql = `UPDATE picks SET ${fields.join(', ')} WHERE id = ?`;
+  const sql = `UPDATE picks SET ${fields.join(", ")} WHERE id = ?`;
   values.push(id);
 
   db.prepare(sql).run(...values);
@@ -271,7 +291,7 @@ export function updatePick(
     logActivity(
       updated.agent_id,
       updated.id,
-      'pick.updated',
+      "pick.updated",
       `${updated.home_team} vs ${updated.away_team} — updated by ${updatedBy}`
     );
   }
@@ -286,12 +306,18 @@ export function updateClosingLine(
 ): PickWithClv | null {
   const db = getDb();
   const existing = getPickById(id);
-  if (!existing) return null;
+  if (!existing) {
+    return null;
+  }
 
   // Recalculate P&L if already settled
   let profitLoss = existing.profit_loss;
   if (existing.result) {
-    profitLoss = calculateProfitLoss(existing.result, existing.stake, existing.recommended_odds);
+    profitLoss = calculateProfitLoss(
+      existing.result,
+      existing.stake,
+      existing.recommended_odds
+    );
   }
 
   db.prepare(`
@@ -304,7 +330,7 @@ export function updateClosingLine(
     logActivity(
       updated.agent_id,
       updated.id,
-      'pick.closing_line',
+      "pick.closing_line",
       `${updated.home_team} vs ${updated.away_team} — CL: ${closingOdds}`
     );
   }
@@ -319,7 +345,9 @@ export function settleResult(
 ): PickWithClv | null {
   const db = getDb();
   const existing = getPickById(id);
-  if (!existing) return null;
+  if (!existing) {
+    return null;
+  }
 
   const profitLoss = calculateProfitLoss(
     result,
@@ -337,8 +365,8 @@ export function settleResult(
     logActivity(
       updated.agent_id,
       updated.id,
-      'pick.settled',
-      `${updated.home_team} vs ${updated.away_team} — ${result} (${profitLoss >= 0 ? '+' : ''}${profitLoss.toFixed(2)})`
+      "pick.settled",
+      `${updated.home_team} vs ${updated.away_team} — ${result} (${profitLoss >= 0 ? "+" : ""}${profitLoss.toFixed(2)})`
     );
   }
 
@@ -351,10 +379,14 @@ export function unsettlePick(
 ): PickWithClv | null {
   const db = getDb();
   const existing = getPickById(id);
-  if (!existing) return null;
+  if (!existing) {
+    return null;
+  }
 
   // Must be in a settled state
-  if (!existing.result) return null;
+  if (!existing.result) {
+    return null;
+  }
 
   // Clear result and P&L, preserve closing_odds (historical data)
   db.prepare(`
@@ -367,7 +399,7 @@ export function unsettlePick(
     logActivity(
       updated.agent_id,
       updated.id,
-      'pick.unsettled',
+      "pick.unsettled",
       `${updated.home_team} vs ${updated.away_team} — unsettled by ${updatedBy}`
     );
   }
@@ -378,85 +410,101 @@ export function unsettlePick(
 export function deletePick(id: string): boolean {
   const db = getDb();
   const existing = getPickById(id);
-  if (!existing) return false;
+  if (!existing) {
+    return false;
+  }
 
-  db.prepare('DELETE FROM picks WHERE id = ?').run(id);
+  db.prepare("DELETE FROM picks WHERE id = ?").run(id);
 
   logActivity(
     existing.agent_id,
     existing.id,
-    'pick.deleted',
+    "pick.deleted",
     `${existing.home_team} vs ${existing.away_team} — ${existing.selection}`
   );
 
   return true;
 }
 
-export function batchCreatePicks(picks: Array<{
-  source?: string;
-  match_date: string;
-  competition?: string;
-  home_team: string;
-  away_team: string;
-  market: string;
-  selection: string;
-  recommended_odds: number;
-  closing_odds?: number;
-  stake: number;
-  notes?: string;
-  result?: string;
-  created_by?: string;
-  raw_agent_payload?: string;
-  agent_id?: string;
-}>): Array<{ success: boolean; pick?: PickWithClv; error?: string }> {
+export function batchCreatePicks(
+  picks: Array<{
+    source?: string;
+    match_date: string;
+    competition?: string;
+    home_team: string;
+    away_team: string;
+    market: string;
+    selection: string;
+    recommended_odds: number;
+    closing_odds?: number;
+    stake: number;
+    notes?: string;
+    result?: string;
+    created_by?: string;
+    raw_agent_payload?: string;
+    agent_id?: string;
+  }>
+): Array<{ success: boolean; pick?: PickWithClv; error?: string }> {
   const db = getDb();
-  const results: Array<{ success: boolean; pick?: PickWithClv; error?: string }> = [];
+  const results: Array<{
+    success: boolean;
+    pick?: PickWithClv;
+    error?: string;
+  }> = [];
 
   // Use a transaction for batch inserts
-  db.prepare('BEGIN TRANSACTION').run();
+  db.prepare("BEGIN TRANSACTION").run();
 
   try {
     for (const pickData of picks) {
       try {
         const profit_loss = pickData.result
-          ? calculateProfitLoss(pickData.result, pickData.stake, pickData.recommended_odds)
+          ? calculateProfitLoss(
+              pickData.result,
+              pickData.stake,
+              pickData.recommended_odds
+            )
           : null;
 
-        const insertResult = db.prepare(`
+        const insertResult = db
+          .prepare(`
           INSERT INTO picks (
             source, match_date, competition, home_team, away_team,
             market, selection, recommended_odds, closing_odds, stake,
             result, profit_loss, notes, created_by, raw_agent_payload, agent_id
           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `).run(
-          pickData.source ?? null,
-          pickData.match_date,
-          pickData.competition ?? null,
-          pickData.home_team,
-          pickData.away_team,
-          pickData.market,
-          pickData.selection,
-          pickData.recommended_odds,
-          pickData.closing_odds ?? null,
-          pickData.stake,
-          pickData.result ?? null,
-          profit_loss,
-          pickData.notes ?? null,
-          pickData.created_by ?? 'user',
-          pickData.raw_agent_payload ?? null,
-          pickData.agent_id ?? null
-        );
+        `)
+          .run(
+            pickData.source ?? null,
+            pickData.match_date,
+            pickData.competition ?? null,
+            pickData.home_team,
+            pickData.away_team,
+            pickData.market,
+            pickData.selection,
+            pickData.recommended_odds,
+            pickData.closing_odds ?? null,
+            pickData.stake,
+            pickData.result ?? null,
+            profit_loss,
+            pickData.notes ?? null,
+            pickData.created_by ?? "user",
+            pickData.raw_agent_payload ?? null,
+            pickData.agent_id ?? null
+          );
 
         // Log activity for each batch-created pick
         const insertedRow = db
-          .prepare('SELECT * FROM picks WHERE rowid = ?')
-          .get(insertResult.lastInsertRowid) as Record<string, unknown> | undefined;
+          .prepare("SELECT * FROM picks WHERE rowid = ?")
+          .get(insertResult.lastInsertRowid) as
+          | Record<string, unknown>
+          | undefined;
         if (insertedRow) {
           const pick = rowToPick(insertedRow);
           logActivity(
             pickData.agent_id ?? null,
             pick.id,
-            'pick.created',
+            "pick.created",
             `${pick.home_team} vs ${pick.away_team} — ${pick.selection} @ ${pick.recommended_odds}`
           );
           results.push({ success: true, pick });
@@ -468,9 +516,9 @@ export function batchCreatePicks(picks: Array<{
       }
     }
 
-    db.prepare('COMMIT').run();
+    db.prepare("COMMIT").run();
   } catch (err) {
-    db.prepare('ROLLBACK').run();
+    db.prepare("ROLLBACK").run();
     // If transaction fails, mark all as failed
     results.length = 0;
     results.push({ success: false, error: `Transaction failed: ${err}` });
@@ -495,7 +543,11 @@ export function batchUpdateClosingLines(
 
     let profitLoss = existing.profit_loss;
     if (existing.result) {
-      profitLoss = calculateProfitLoss(existing.result, existing.stake, existing.recommended_odds);
+      profitLoss = calculateProfitLoss(
+        existing.result,
+        existing.stake,
+        existing.recommended_odds
+      );
     }
 
     try {
@@ -506,7 +558,7 @@ export function batchUpdateClosingLines(
       logActivity(
         existing.agent_id,
         existing.id,
-        'pick.closing_line',
+        "pick.closing_line",
         `${existing.home_team} vs ${existing.away_team} — CL: ${update.closing_odds}`
       );
       results.push({ success: true });
@@ -532,7 +584,11 @@ export function batchSettleResults(
       continue;
     }
 
-    const profitLoss = calculateProfitLoss(update.result, existing.stake, existing.recommended_odds);
+    const profitLoss = calculateProfitLoss(
+      update.result,
+      existing.stake,
+      existing.recommended_odds
+    );
 
     try {
       db.prepare(`
@@ -542,8 +598,8 @@ export function batchSettleResults(
       logActivity(
         existing.agent_id,
         existing.id,
-        'pick.settled',
-        `${existing.home_team} vs ${existing.away_team} — ${update.result} (${profitLoss >= 0 ? '+' : ''}${profitLoss.toFixed(2)})`
+        "pick.settled",
+        `${existing.home_team} vs ${existing.away_team} — ${update.result} (${profitLoss >= 0 ? "+" : ""}${profitLoss.toFixed(2)})`
       );
       results.push({ success: true });
     } catch (err) {
